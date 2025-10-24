@@ -1,5 +1,22 @@
 # Welcome to HashLips 👄
 
+## Guide du projet Oinconomics
+
+Ce dépôt contient une personnalisation complète pour le projet **Oinconomics**. Pour prendre en main la stack (génération HashLips, configuration Candy Machine/Guard, scripts Umi, déploiement), suivez ces ressources :
+
+- **Guide complet** : [`docs/full-project-guide.md`](docs/full-project-guide.md) — tutoriel étape par étape pour installer l'environnement, remplir `.env`, générer les assets, déployer Candy Machine, configurer les guards et minter.
+- **Playbook Umi & Guards** : [`docs/umi-guard-playbook.md`](docs/umi-guard-playbook.md) — référence rapide sur les scripts Umi, la configuration `.env` et le dépannage des transactions.
+
+Avant toute exécution, créez votre fichier `.env` (à partir de `.env.example`), ajustez les variables pour votre environnement, puis lancez :
+
+```bash
+npm install
+cd umi && npm install
+cd .. && npm run generate-configs
+```
+
+Ces commandes installent les dépendances et génèrent `config.json`, `guard.config.json` et `config.local.json` à partir de vos variables d'environnement. Reportez-vous ensuite aux guides ci-dessus pour suivre l'intégralité du flux de travail.
+
 ![](https://github.com/HashLips/hashlips_art_engine/blob/main/logo.png)
 
 All the code in these repos was created and explained by HashLips on the main YouTube channel.

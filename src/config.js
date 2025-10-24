@@ -1,31 +1,91 @@
+const fs = require("fs");
+const path = require("path");
+const dotenv = require("dotenv");
+
 const basePath = process.cwd();
+const defaultProjectRoot = process.env.PROJECT_ROOT ?? basePath;
+const envCandidate = process.env.ENV_PATH ?? path.resolve(defaultProjectRoot, ".env");
+if (fs.existsSync(envCandidate)) {
+  dotenv.config({ path: envCandidate });
+} else {
+  dotenv.config();
+}
+
 const { NETWORK } = require(`${basePath}/constants/network.js`);
 
-// IMPORTANT: Ceci est configuré pour le format Solana.
-// Le déploiement se fera sur TESTNET (géré par Sugar, pas par ce fichier).
-const network = NETWORK.sol; 
+const required = (key) => {
+  const value = process.env[key];
+  if (value === undefined || value === null || value === "") {
+    throw new Error(`Missing environment variable: ${key}`);
+  }
+  return value;
+};
 
-// --- MODIFIEZ CECI POUR VOTRE COLLECTION ---
-const namePrefix = "Nom de votre NFT"; // Ex: "Singe Bizarre"
-const description = "Description de votre collection";
-const baseUri = "ipfs://NewUriToReplace"; // On laissera ça comme ça pour l'instant
+const optional = (key, fallback) => {
+  const value = process.env[key];
+  return value === undefined || value === null || value === "" ? fallback : value;
+};
 
-// Nombre total de NFT à générer. Mettons 10 pour ce test.
-const collectionSize = 10; 
+const parseInteger = (key) => {
+  const raw = required(key);
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`Environment variable ${key} must be an integer`);
+  }
+  return parsed;
+};
 
-// --- METADONNÉES SOLANA (TRÈS IMPORTANT) ---
-const solanaMetadata = {
-  symbol: "OINCO", // Mettez un symbole court (ex: "SBC")
-  // C'est le pourcentage de royalties. 1000 = 10%
-  seller_fee_basis_points: 1000, 
-  external_url: "https://www.votre-site.com", // Mettez votre site si vous en avez un
-  creators: [
+const parseBoolean = (key) => {
+  const raw = required(key).trim().toLowerCase();
+  if (["true", "1", "yes"].includes(raw)) return true;
+  if (["false", "0", "no"].includes(raw)) return false;
+  throw new Error(`Environment variable ${key} must be a boolean (true/false)`);
+};
+
+const parseCreators = () => {
+  const custom = optional("COLLECTION_CREATORS_JSON", null);
+  if (custom) {
+    try {
+      const parsed = JSON.parse(custom);
+      if (!Array.isArray(parsed)) {
+        throw new Error("COLLECTION_CREATORS_JSON must be a JSON array");
+      }
+      return parsed;
+    } catch (error) {
+      throw new Error(`Invalid COLLECTION_CREATORS_JSON value: ${error.message}`);
+    }
+  }
+  const address = required("CREATOR_ADDRESS");
+  const share = Number.parseInt(optional("CREATOR_SHARE", "100"), 10);
+  if (!Number.isFinite(share)) {
+    throw new Error("CREATOR_SHARE must be an integer");
+  }
+  return [
     {
-      // C'EST VOTRE ADRESSE DE PORTEFEUILLE TESTNET
-      address: "5zHBXzhaqKXJRMd7KkuWsb4s8zPyakKdijr9E3jgyG8Z", 
-      share: 100, // Part des royalties (100% pour vous)
+      address,
+      share,
     },
-  ],
+  ];
+};
+
+const networkValue = required("COLLECTION_NETWORK").trim().toLowerCase();
+if (!Object.values(NETWORK).includes(networkValue)) {
+  throw new Error(`Unsupported COLLECTION_NETWORK value: ${networkValue}`);
+}
+const network = networkValue;
+
+// --- MODIFIEZ CECI VIA .env POUR VOTRE COLLECTION ---
+const namePrefix = required("COLLECTION_NAME_PREFIX");
+const description = required("COLLECTION_DESCRIPTION");
+const baseUri = required("COLLECTION_BASE_URI");
+const collectionSize = parseInteger("COLLECTION_SIZE");
+
+// --- METADONNÉES SOLANA ---
+const solanaMetadata = {
+  symbol: required("COLLECTION_SYMBOL"),
+  seller_fee_basis_points: parseInteger("COLLECTION_SELLER_FEE_BPS"),
+  external_url: required("COLLECTION_EXTERNAL_URL"),
+  creators: parseCreators(),
 };
 
 // C'est ici que vous définissez vos calques.

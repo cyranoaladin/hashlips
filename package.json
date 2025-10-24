@@ -3,7 +3,9 @@
   "version": "1.1.1",
   "description": "HashLips Art Engine is a tool used to create multiple different instances of artworks based on provided layers.",
   "main": "index.js",
-  "bin": "index.js",
+  "bin": {
+    "hashlips_art_engine": "index.js"
+  },
   "pkg": {
     "assets": [
       "layers/**/*",
@@ -19,14 +21,23 @@
     "pixelate": "node utils/pixelate.js",
     "update_info": "node utils/update_info.js",
     "preview_gif": "node utils/preview_gif.js",
-    "generate_metadata": "node utils/generate_metadata.js"
+    "generate_metadata": "node utils/generate_metadata.js",
+    "generate-configs": "node scripts/generate-configs.mjs"
   },
   "author": "Daniel Eugene Botha (HashLips)",
   "license": "MIT",
   "dependencies": {
+    "@metaplex-foundation/mpl-candy-machine": "^6.1.0",
+    "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
+    "@metaplex-foundation/umi": "^1.4.1",
+    "@metaplex-foundation/umi-bundle-defaults": "^1.4.1",
     "@skyra/gifenc": "^1.0.1",
-    "canvas": "^2.8.0",
+    "@solana/web3.js": "^1.98.4",
+    "canvas": "^2.11.2",
     "gif-encoder-2": "^1.0.5",
-    "sha1": "^1.1.1"
-  }
+    "sha1": "^1.1.1",
+    "dotenv": "^16.4.5"
+  },
+  "keywords": [],
+  "type": "module"
 }
