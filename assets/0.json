@@ -1,0 +1,58 @@
+{
+  "name": "Nom de votre NFT #0",
+  "symbol": "OINCO",
+  "description": "Description de votre collection",
+  "seller_fee_basis_points": 1000,
+  "image": "0.png",
+  "external_url": "https://www.votre-site.com",
+  "edition": 0,
+  "attributes": [
+    {
+      "trait_type": "1.Background",
+      "value": "Purple"
+    },
+    {
+      "trait_type": "2.Skin",
+      "value": "Dark skin"
+    },
+    {
+      "trait_type": "3.Outfit",
+      "value": "Solana Kids Tshirt"
+    },
+    {
+      "trait_type": "4.Eyes",
+      "value": "Rock&Roll"
+    },
+    {
+      "trait_type": "5.Nose",
+      "value": "Empty3"
+    },
+    {
+      "trait_type": "6.Ears",
+      "value": "Black Earing"
+    },
+    {
+      "trait_type": "7.Mouth",
+      "value": "Thin Moustache"
+    },
+    {
+      "trait_type": "8.Headtop",
+      "value": "Ginger"
+    }
+  ],
+  "properties": {
+    "files": [
+      {
+        "uri": "0.png",
+        "type": "image/png"
+      }
+    ],
+    "category": "image",
+    "creators": [
+      {
+        "address": "5zHBXzhaqKXJRMd7KkuWsb4s8zPyakKdijr9E3jgyG8Z",
+        "share": 100
+      }
+    ]
+  }
+}
