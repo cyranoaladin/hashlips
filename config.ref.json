@@ -24,8 +24,6 @@
     "parallelLimit": 100
   },
   "hiddenSettings": null,
-  "guards": {
-    "default": {}
-  },
+  "guards": null,
   "maxEditionSupply": null
 }

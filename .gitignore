@@ -142,3 +142,9 @@ dist
 .DS_Store
 
 config.local.json
+
+# debug artifacts
+*.log
+cache.backup*.json
+mint.guard.log
+deploy-dev.log
