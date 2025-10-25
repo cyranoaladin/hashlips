@@ -8,10 +8,117 @@ else
   PROJECT_ROOT="$(pwd)"
 fi
 
-# Defaults (override with env vars if required)
+# Defaults (override with env vars or CLI flags)
 CACHE_PATH="${CACHE_PATH:-$PROJECT_ROOT/cache.json}"
+GUARD_CONFIG_PATH="${GUARD_CONFIG_PATH:-$PROJECT_ROOT/guard.config.json}"
+CONFIG_JSON_TARGET="${CONFIG_JSON_PATH:-$PROJECT_ROOT/config.json}"
+GUARD_CONFIG_JSON_TARGET="${GUARD_CONFIG_JSON_PATH:-$PROJECT_ROOT/guard.config.json}"
+CONFIG_LOCAL_JSON_TARGET="${CONFIG_LOCAL_JSON_PATH:-$PROJECT_ROOT/config.local.json}"
 KEYPAIR_PATH="${KEYPAIR_PATH:-$HOME/.config/solana/id.json}"
 RPC_URL="${RPC_URL:-https://api.devnet.solana.com}"
+GUARD_LABEL="${GUARD_LABEL:-default}"
+THIRD_PARTY_SIGNER_KEYPAIR_PATH="${THIRD_PARTY_SIGNER_KEYPAIR_PATH:-}"
+THIRD_PARTY_SIGNER_PUBKEY="${THIRD_PARTY_SIGNER_PUBKEY:-}"
+COMPUTE_UNITS="${COMPUTE_UNITS:-400000}"
+PRIORITY_MICROLAMPORTS="${PRIORITY_MICROLAMPORTS:-0}"
+
+resolve_relative() {
+  case "$1" in
+    /*) echo "$1" ;;
+    "") echo "" ;;
+    *) echo "$PROJECT_ROOT/$1" | sed 's#//\+#/#g' ;;
+  esac
+}
+
+print_usage() {
+  cat <<'USAGE'
+Usage: scripts/gen-env.sh [OPTIONS] [OUTPUT=.env]
+
+Options:
+  --cache <path>             Path to the Sugar cache.json for this tier
+  --guard <path>             Path to the guard configuration JSON
+  --keypair <path>           Wallet keypair JSON used as payer
+  --third-party-keypair <path>
+                             Keypair JSON for the thirdPartySigner guard
+  --third-party-pubkey <key> Public key registered in Candy Guard
+  --label <name>             Guard label to target (default: default)
+  --rpc <url>                RPC endpoint URL
+  --compute-units <number>   Compute units request for the mint script
+  --priority-fee <number>    Priority fee in micro-lamports
+  -h, --help                 Show this help message
+
+Environment variables with the same names take precedence over defaults.
+USAGE
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --cache)
+      [ -n "${2:-}" ] || { echo "Error: --cache expects a value" >&2; exit 1; }
+      CACHE_PATH="$(resolve_relative "$2")"
+      shift 2
+      ;;
+    --guard)
+      [ -n "${2:-}" ] || { echo "Error: --guard expects a value" >&2; exit 1; }
+      GUARD_CONFIG_PATH="$(resolve_relative "$2")"
+      GUARD_CONFIG_JSON_TARGET="$GUARD_CONFIG_PATH"
+      shift 2
+      ;;
+    --keypair)
+      [ -n "${2:-}" ] || { echo "Error: --keypair expects a value" >&2; exit 1; }
+      KEYPAIR_PATH="$(resolve_relative "$2")"
+      shift 2
+      ;;
+    --third-party-keypair)
+      [ -n "${2:-}" ] || { echo "Error: --third-party-keypair expects a value" >&2; exit 1; }
+      THIRD_PARTY_SIGNER_KEYPAIR_PATH="$(resolve_relative "$2")"
+      shift 2
+      ;;
+    --third-party-pubkey)
+      [ -n "${2:-}" ] || { echo "Error: --third-party-pubkey expects a value" >&2; exit 1; }
+      THIRD_PARTY_SIGNER_PUBKEY="$2"
+      shift 2
+      ;;
+    --label)
+      [ -n "${2:-}" ] || { echo "Error: --label expects a value" >&2; exit 1; }
+      GUARD_LABEL="$2"
+      shift 2
+      ;;
+    --rpc)
+      [ -n "${2:-}" ] || { echo "Error: --rpc expects a value" >&2; exit 1; }
+      RPC_URL="$2"
+      shift 2
+      ;;
+    --compute-units)
+      [ -n "${2:-}" ] || { echo "Error: --compute-units expects a value" >&2; exit 1; }
+      COMPUTE_UNITS="$2"
+      shift 2
+      ;;
+    --priority-fee)
+      [ -n "${2:-}" ] || { echo "Error: --priority-fee expects a value" >&2; exit 1; }
+      PRIORITY_MICROLAMPORTS="$2"
+      shift 2
+      ;;
+    -h|--help)
+      print_usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      echo "Unknown option: $1" >&2
+      print_usage >&2
+      exit 1
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+ENV_FILE="${1:-.env}"
 
 # jq dependency
 if ! command -v jq >/dev/null 2>&1; then
@@ -29,7 +136,15 @@ if [ -z "$CMA" ] || [ "$CMA" = "null" ]; then
   echo "Error: .program.candyMachineCreator missing in $CACHE_PATH"; exit 1
 fi
 
-ENV_FILE="${1:-.env}"
+COLLECTION_MINT="$(jq -r '.program.collectionMint // empty' "$CACHE_PATH")"
+if [ -z "$COLLECTION_MINT" ] || [ "$COLLECTION_MINT" = "null" ]; then
+  echo "Warning: .program.collectionMint missing in $CACHE_PATH" >&2
+  COLLECTION_MINT=""
+fi
+
+if [ ! -f "$GUARD_CONFIG_PATH" ]; then
+  echo "Warning: guard configuration not found at $GUARD_CONFIG_PATH" >&2
+fi
 
 # Backup existing env if needed
 if [ -f "$ENV_FILE" ]; then
@@ -45,20 +160,22 @@ cat > "$ENV_FILE" <<EOF
 # --- Project & paths ---
 PROJECT_ROOT=$PROJECT_ROOT
 ENV_PATH=
-CONFIG_JSON_PATH=$PROJECT_ROOT/config.json
-GUARD_CONFIG_JSON_PATH=$PROJECT_ROOT/guard.config.json
-CONFIG_LOCAL_JSON_PATH=$PROJECT_ROOT/config.local.json
+CONFIG_JSON_PATH=$CONFIG_JSON_TARGET
+GUARD_CONFIG_JSON_PATH=$GUARD_CONFIG_JSON_TARGET
+CONFIG_LOCAL_JSON_PATH=$CONFIG_LOCAL_JSON_TARGET
 
 # --- Solana / Umi ---
 RPC_URL=$RPC_URL
 KEYPAIR_PATH=$KEYPAIR_PATH
 CACHE_PATH=$CACHE_PATH
-GUARD_CONFIG_PATH=$PROJECT_ROOT/guard.config.json
-GUARD_LABEL=default
+GUARD_CONFIG_PATH=$GUARD_CONFIG_PATH
+GUARD_LABEL=$GUARD_LABEL
 # IMPORTANT: must be the candyMachineCreator PDA (auto-filled)
 COLLECTION_UPDATE_AUTHORITY=$CMA
-COMPUTE_UNITS=400000
-PRIORITY_MICROLAMPORTS=0
+COLLECTION_MINT=$COLLECTION_MINT
+COMPUTE_UNITS=$COMPUTE_UNITS
+PRIORITY_MICROLAMPORTS=$PRIORITY_MICROLAMPORTS
+THIRD_PARTY_SIGNER_KEYPAIR_PATH=$THIRD_PARTY_SIGNER_KEYPAIR_PATH
 
 # --- Collection metadata / Candy Machine ---
 COLLECTION_NAME_PREFIX=Name of your NFT
@@ -72,11 +189,11 @@ COLLECTION_NETWORK=sol
 CREATOR_ADDRESS=5zHBXzhaqKXJRMd7KkuWsb4s8zPyakKdijr9E3jgyG8Z
 CREATOR_SHARE=100
 COLLECTION_CREATORS_JSON=
-TOKEN_STANDARD=nft
+TOKEN_STANDARD=pnft
 IS_MUTABLE=true
 IS_SEQUENTIAL=false
 UPLOAD_METHOD=pinata
-RULE_SET=null
+RULE_SET=REPLACE_WITH_RULE_SET_ADDRESS
 MAX_EDITION_SUPPLY=null
 HIDDEN_SETTINGS=null
 AWS_CONFIG=null
@@ -90,14 +207,17 @@ PINATA_API_GATEWAY=https://api.pinata.cloud
 PINATA_CONTENT_GATEWAY=https://gateway.pinata.cloud
 PINATA_PARALLEL_LIMIT=100
 
-# --- Candy Guard (solPayment) ---
-SOL_PAYMENT_VALUE=0.01
-SOL_PAYMENT_DESTINATION=5zHBXzhaqKXJRMd7KkuWsb4s8zPyakKdijr9E3jgyG8Z
+# --- Candy Guard defaults ---
+SOL_PAYMENT_VALUE=null
+SOL_PAYMENT_DESTINATION=
+
+# Optional thirdPartySigner guard (multi-tier server co-signature)
+# Fill THIRD_PARTY_SIGNER_PUBKEY above when enabling the guard.
 
 # --- Local overrides (optional) ---
 LOCAL_IS_MUTABLE=false
-LOCAL_SOL_PAYMENT_VALUE=1
-LOCAL_SOL_PAYMENT_DESTINATION=5zHBXzhaqKXJRMd7KkuWsb4s8zPyakKdijr9E3jgyG8Z
+LOCAL_SOL_PAYMENT_VALUE=null
+LOCAL_SOL_PAYMENT_DESTINATION=
 LOCAL_UPLOAD_METHOD=
 LOCAL_RULE_SET=
 LOCAL_MAX_EDITION_SUPPLY=

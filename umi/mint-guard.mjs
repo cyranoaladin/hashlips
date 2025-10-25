@@ -50,6 +50,7 @@ const KEYPAIR_PATH = resolvePath(requireEnv('KEYPAIR_PATH'));
 const CACHE_PATH = resolvePath(requireEnv('CACHE_PATH'));
 const GUARD_CONFIG_PATH = resolvePath(requireEnv('GUARD_CONFIG_PATH'));
 const GUARD_LABEL = requireEnv('GUARD_LABEL');
+const THIRD_PARTY_SIGNER_KEYPAIR_PATH = optionalEnv('THIRD_PARTY_SIGNER_KEYPAIR_PATH');
 
 function fail(msg) { console.error(msg); process.exit(1); }
 
@@ -133,11 +134,44 @@ async function main() {
 
   const nftSigner = generateSigner(umi);
 
-  const solDestFromCache = cache?.guards?.[guardLabel]?.solPayment?.destination;
-  const solDestFromConfig = guardConfig?.guards?.[guardLabel]?.solPayment?.destination;
-  const solDest = solDestFromCache ?? solDestFromConfig ?? null;
-  if (!solDest) {
-    console.warn('⚠️ Destination solPayment introuvable dans cache.json/guard.config.json, utilisation de collectionUpdateAuthority.');
+  const guardSources = [
+    guardConfig?.guards?.[guardLabel],
+    guardConfig?.guards?.default,
+    cache?.guards?.[guardLabel],
+    cache?.guards?.default,
+  ].filter(Boolean);
+
+  const mergedGuardSettings = guardSources.reduce((acc, guard) => {
+    Object.entries(guard).forEach(([key, value]) => {
+      acc[key] = value;
+    });
+    return acc;
+  }, {});
+
+  const guardMintArgs = {};
+  const remainingAccountsNotes = [];
+
+  if (mergedGuardSettings.solPayment) {
+    const destination = mergedGuardSettings.solPayment.destination
+      ? publicKey(mergedGuardSettings.solPayment.destination)
+      : collectionUpdateAuthority;
+    guardMintArgs.solPayment = some({
+      destination,
+    });
+    remainingAccountsNotes.push(['solPayment', destination.toString()]);
+  }
+
+  let thirdPartySigner = null;
+  if (mergedGuardSettings.thirdPartySigner) {
+    if (!THIRD_PARTY_SIGNER_KEYPAIR_PATH) {
+      fail(
+        'Le guard thirdPartySigner est actif mais THIRD_PARTY_SIGNER_KEYPAIR_PATH est absent dans .env.',
+      );
+    }
+    const signerPath = resolvePath(THIRD_PARTY_SIGNER_KEYPAIR_PATH);
+    thirdPartySigner = loadSigner(umi, signerPath);
+    guardMintArgs.thirdPartySigner = some({ signer: thirdPartySigner });
+    remainingAccountsNotes.push(['thirdPartySigner', thirdPartySigner.publicKey.toString()]);
   }
 
   const params = {
@@ -145,12 +179,10 @@ async function main() {
     collectionMint,
     collectionUpdateAuthority,     // <- au lieu de payer.publicKey
     nftMint: nftSigner,            // signer qui créera le NFT
-    mintArgs: {
-      solPayment: some({
-        destination: publicKey(solDest ?? collectionUpdateAuthority),
-      }),
-    },
   };
+  if (Object.keys(guardMintArgs).length > 0) {
+    params.mintArgs = guardMintArgs;
+  }
   if (candyGuard) params.candyGuard = candyGuard;
 
   console.log('Params envoyés :', {
@@ -158,7 +190,7 @@ async function main() {
     candyGuard: candyGuard?.toString?.() ?? null,
     collectionMint: collectionMint.toString(),
     collectionUpdateAuthority: collectionUpdateAuthority.toString(),
-    solDestination: (solDest ?? collectionUpdateAuthority).toString?.() ?? solDest ?? null,
+    guardArgs: remainingAccountsNotes.map(([guardName, value]) => ({ guard: guardName, value })),
     nftMint: nftSigner.publicKey.toString(),
   });
 

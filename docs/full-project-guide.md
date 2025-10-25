@@ -11,6 +11,7 @@ _This handbook accompanies the MVP presented by **Kamel Ben Rhouma (treizeb)** a
 | Art generation | Produce layered PNG assets + metadata | HashLips Art Engine (Node.js) |
 | Configuration | Materialize Candy Machine + guard configs from `.env` | `npm run generate-configs` (custom script) |
 | Deployment | Upload assets, deploy Candy Machine, configure Candy Guard | Sugar CLI + Solana CLI |
+| Tier routing | Map wallet balance to poor/mid/rich Candy Machines while keeping one collection | Server-side logic + `thirdPartySigner` guard |
 | Guarded minting | Execute mints with compute budget + guard enforcement | Umi SDK (`umi/mint-guard.mjs`) |
 | Documentation | Onboarding, troubleshooting, SOPs | `docs/*.md`, `.env.example` |
 
@@ -70,31 +71,41 @@ hashlips/
 
 ## 4. Environment Configuration
 
-All secrets and deployment-specific values live in `.env` (never commit it). Start from the documented template:
+All secrets and deployment-specific values live in `.env` files (never commit them). For the tiered setup, clone the template per Candy Machine:
 
 ```bash
-cp .env.example .env
-# or auto-fill from cache.json (post-deploy) → scripts/gen-env.sh .env
+cp .env.example .env.poor
+cp .env.example .env.mid
+cp .env.example .env.rich
+# or auto-fill from cache.json → scripts/gen-env.sh --cache cache.poor.json --guard guard.poor.json .env.poor
 ```
 
-Key sections inside `.env`:
+Key sections inside each `.env.<tier>`:
 
-1. **Project paths** – `PROJECT_ROOT`, config output paths.
-2. **Solana & Umi** – RPC endpoint, keypair JSON, Candy Machine cache.
-3. **Candy Machine metadata** – collection name, symbol, royalty basis points, creators.
+1. **Project paths** – `PROJECT_ROOT`, plus tier-specific `CONFIG_JSON_PATH`/`GUARD_CONFIG_JSON_PATH` outputs.
+2. **Solana & Umi** – RPC endpoint, payer keypair, `CACHE_PATH`, optional overrides (`COLLECTION_MINT`, `COLLECTION_UPDATE_AUTHORITY`, `THIRD_PARTY_SIGNER_*`).
+3. **Candy Machine metadata** – collection name, symbol, royalties, creators (shared across tiers).
 4. **Upload backend** – Pinata credentials or other storage providers.
-5. **Candy Guard** – solPayment price and destination.
-6. **Local overrides** – convenient toggles for dev/test sessions.
+5. **Candy Guard** – optional `SOL_PAYMENT_*` plus the `thirdPartySigner` public key for server-side cosigning.
+6. **Local overrides** – development toggles (including `LOCAL_THIRD_PARTY_SIGNER_PUBKEY`).
 
-> The template documents every variable with English annotations so new operators know where to source values and which fields are optional.
+> The template documents every variable with English annotations so new operators know where to source values and which fields are optional or tier-specific.
 
 ### Environment Generation from `cache.json`
 
-After deploying once with Sugar, use `scripts/gen-env.sh` to extract the correct `COLLECTION_UPDATE_AUTHORITY` (the `candyMachineCreator` PDA). The script:
+After deploying once with Sugar, use `scripts/gen-env.sh` to extract the correct `COLLECTION_UPDATE_AUTHORITY` and (optionally) pre-fill tier-specific paths. Examples:
 
-1. Backs up any existing `.env`.
-2. Reads `program.candyMachineCreator` from the given cache.
-3. Writes a fresh `.env` with sane defaults and reminders of secrets to fill in.
+```bash
+scripts/gen-env.sh --cache cache.poor.json --guard guard.poor.json --label default .env.poor
+scripts/gen-env.sh --cache cache.mid.json  --guard guard.mid.json  --label default .env.mid
+scripts/gen-env.sh --cache cache.rich.json --guard guard.rich.json --label default .env.rich
+```
+
+The script:
+
+1. Backs up the target `.env.<tier>` when it already exists.
+2. Reads `program.candyMachineCreator` and `program.collectionMint` from the given cache.
+3. Writes a fresh `.env.<tier>` with sane defaults, leaving placeholders for secrets and the `thirdPartySigner` keys.
 
 ---
 
@@ -108,11 +119,19 @@ npm run generate-configs
 
 This script emits three JSON files (paths configurable via `.env`):
 
-- `config.json` – Standard Candy Machine configuration.
-- `guard.config.json` – Candy Guard groups populated with the solPayment guard.
-- `config.local.json` – Local override version for rapid testing.
+- `config.json` – Standard Candy Machine configuration (shared metadata, pnft flag, rule set).
+- `guard.config.json` – Candy Guard groups reflecting `SOL_PAYMENT_*` and/or `thirdPartySigner` settings.
+- `config.local.json` – Local override version for rapid testing (inherits from the tier, can change guard keys).
 
-Each invocation overwrites the files, ensuring they never drift from the source-of-truth environment variables.
+Run the script once per tier by pointing `ENV_PATH` (or sourcing `.env.<tier>` beforehand):
+
+```bash
+ENV_PATH=.env.poor npm run generate-configs
+ENV_PATH=.env.mid npm run generate-configs
+ENV_PATH=.env.rich npm run generate-configs
+```
+
+Each invocation overwrites the outputs for that tier, ensuring they never drift from the source-of-truth environment variables.
 
 ---
 
@@ -138,35 +157,50 @@ This runs `scripts/smoke-test.js`, verifying that the root and Umi dependency tr
 
 ## 7. Candy Machine Deployment with Sugar
 
-A typical Devnet deployment flow:
+Perform the upload/deploy loop once for each tier. Example for the **poor** tier (repeat with `.env.mid`/`.env.rich` and the matching asset/cache/guard files):
 
 ```bash
-# 1. Upload assets
-dotenv -f .env -- sugar upload --cache cache.json
+# 1. Upload tier-specific assets (HashLips outputs staged in assets_poor/)
+dotenv -f .env.poor -- sugar upload --config config.poor.json --cache cache.poor.json
 
-# 2. Deploy the Candy Machine (uses config.json)
-dotenv -f .env -- sugar deploy --cache cache.json
+# 2. Deploy the Candy Machine (tier config)
+dotenv -f .env.poor -- sugar deploy --cache cache.poor.json --config config.poor.json
 
-# 3. Set up the Candy Guard
-dotenv -f .env -- sugar guard set --cache cache.json --config guard.config.json
+# 3. Attach the guard configuration
+dotenv -f .env.poor -- sugar guard set --cache cache.poor.json --config guard.poor.json
 
-# 4. Verify collection link
-dotenv -f .env -- sugar collection verify --cache cache.json
+# 4. Link the shared collection mint
+dotenv -f .env.poor -- sugar collection set    --cache cache.poor.json --collection $COLLECTION_MINT
+dotenv -f .env.poor -- sugar collection verify --cache cache.poor.json --collection $COLLECTION_MINT
 ```
 
+Keep each `cache.<tier>.json` under version control (minus secrets) so operators can regenerate `.env.<tier>` later. The shared collection mint stays constant across tiers—only the Candy Machine, guard PDA, and asset inputs differ.
+
 **Tips**
-- Always run commands within an environment loader (e.g. `dotenv -f .env -- …`) to avoid mismatched paths.
-- After each Sugar step, inspect `cache.json` into version control (never commit secrets) for reproducibility.
+- Always run commands within an environment loader (e.g. `dotenv -f .env.poor -- …`) to avoid mismatched paths.
+- Save the generated caches immediately (`cp cache.json cache.poor.json`) before moving to the next tier to avoid accidental overwrites.
 - Use Devnet airdrops (`solana airdrop 2`) to fund your wallet.
 
 ---
 
-## 8. Guarded Mint with Umi
+## 8. Tier Routing & Backend Cosignature
 
-Ensure `.env` still references the latest cache + guard files, then execute:
+The dApp/backend is responsible for steering wallets into the correct Candy Machine tier while enforcing free mints:
+
+1. Read the connected wallet balance (and any other heuristics) to classify the user as poor, mid, or rich.
+2. Select the corresponding Candy Machine and load its `.env.<tier>` configuration (`CACHE_PATH`, `GUARD_CONFIG_PATH`, `THIRD_PARTY_SIGNER_KEYPAIR_PATH`).
+3. Build the `mintV2` transaction client-side via Umi, leaving the `thirdPartySigner` account unsigned.
+4. Forward the serialized transaction to the backend; it validates eligibility again, signs with the `thirdPartySigner` key, and returns the partially signed payload.
+5. The client submits the transaction; guards ensure the user cannot bypass the tier because the server signature is required.
+
+Because all three Candy Machines verify against the same programmable collection, downstream tooling (marketplaces, explorers, analytics) still see a single collection—even though supply is segmented by tier.
+
+## 9. Guarded Mint with Umi
+
+Ensure the correct `.env.<tier>` is in scope, then execute:
 
 ```bash
-node umi/mint-guard.mjs
+ENV_PATH=.env.poor node umi/mint-guard.mjs    # example tier
 ```
 
 The script performs the following:
@@ -175,13 +209,13 @@ The script performs the following:
 2. Confirms key files exist (`cache.json`, guard config, keypair).
 3. Validates the on-chain collection update authority and auto-corrects if `cache.json` is stale.
 4. Builds compute budget instructions using `COMPUTE_UNITS` and `PRIORITY_MICROLAMPORTS`.
-5. Submits `mintV2` with the configured guard label and solPayment destination.
+5. Submits `mintV2` with the configured guard label, automatically wiring `solPayment` and/or `thirdPartySigner` arguments based on the tier config.
 
 Output includes the signature (base58) and minted NFT public key. Use `umi/scripts/check-collection.mjs <mint>` to verify that the minted asset is attached to the expected collection authority.
 
 ---
 
-## 9. Troubleshooting Checklist
+## 10. Troubleshooting Checklist
 
 | Symptom | Likely Cause | Fix |
 | --- | --- | --- |
@@ -190,28 +224,30 @@ Output includes the signature (base58) and minted NFT public key. Use `umi/scrip
 | `AccountNotRentExempt` during Sugar deploy | Wallet under-funded | `solana airdrop 2` on Devnet or top-up on Mainnet |
 | `Mint exceeded the limit` | `MAX_EDITION_SUPPLY` or guard restrictions triggered | Review `guard.config.json` and reset guard values |
 | On-chain `solPayment` goes to wrong address | `SOL_PAYMENT_DESTINATION` mismatch | Regenerate configs and reset the Candy Guard |
+| `Missing expected remaining account: thirdPartySigner` | `.env.<tier>` lacks the signer path or Candy Guard pubkey | Populate `THIRD_PARTY_SIGNER_KEYPAIR_PATH` / `THIRD_PARTY_SIGNER_PUBKEY` and rerun the mint |
 
 ---
 
-## 10. Security & Production Notes
+## 11. Security & Production Notes
 
 - `.env`, keypairs, and JWTs must stay out of Git. Add additional ignores in `.gitignore` if you create custom env files.
-- Rotate Pinata JWTs and Solana keypairs after public demos.
+- Rotate Pinata JWTs, Solana keypairs, and the dedicated `thirdPartySigner` key after public demos.
 - For Mainnet, upgrade RPC endpoints to a dedicated provider (GenesysGo, Helius, etc.) for reliability.
-- Audit guard combinations before launch—this MVP currently enables only `solPayment`, but other guards (mintLimit, allowList) can be added through the same `.env` pattern.
+- Keep the programmable NFT rule set under review—revoke or update the `no-transfer` rule if policy changes.
+- Audit guard combinations before launch; the current baseline uses `thirdPartySigner` plus optional `solPayment`, but other guards (mintLimit, allowList) can be layered via the same `.env` pattern.
 
 ---
 
-## 11. Preparing the Hackathon Demo
+## 12. Preparing the Hackathon Demo
 
 1. **Clean slate** – `git pull`, `npm ci`, `cd umi && npm ci`, `npm test`.
 2. **Storytelling** – Emphasize the documentation-first approach enabling teammates to reproduce the flow without tribal knowledge.
-3. **Live mint** – Demonstrate a mint on Devnet and open the resulting signature in the Solana Explorer.
+3. **Tier showcase** – Walk through how the backend selects `.env.poor` vs `.env.mid` vs `.env.rich`, then demonstrate a live mint on Devnet and open the signature in the Solana Explorer.
 4. **Next steps** – Mention roadmap items: extend guard support, integrate analytics dashboards, wrap Umi script in a minimal UI.
 
 ---
 
-## 12. Credits
+## 13. Credits
 
 - **Lead & Presenter** – Kamel Ben Rhouma (treizeb)
 - **Mentoring & QA** – Oinconomics contributors

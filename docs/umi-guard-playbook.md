@@ -4,6 +4,8 @@ _Companion playbook for the Oinconomics MVP presented by **Kamel Ben Rhouma (tre
 
 This document explains how to reproduce the entire Oinconomics Candy Machine workflow for a brand-new collection. It covers asset generation, Candy Machine deployment, guard configuration, scripted mints, and maintenance. Share this guide with any teammate who will operate the pipeline.
 
+> **New in this iteration** – the project now operates three Candy Machines (poor / mid / rich) that all verify into the same programmable collection. Eligibility is enforced by a backend `thirdPartySigner` guard while mints remain free.
+
 ---
 
 ## 1. Prerequisites
@@ -31,14 +33,17 @@ npm install
 
 ## 2. Environment Configuration
 
-All secrets and environment-specific settings live in `.env`. Start from the template, then adjust the values for your workspace:
+All secrets and environment-specific settings live in tier-specific `.env.<tier>` files. Start from the template, then adjust the values for each tier:
 
 ```bash
 cd hashlips
-cp .env.example .env
+cp .env.example .env.poor
+cp .env.example .env.mid
+cp .env.example .env.rich
+# or use scripts/gen-env.sh --cache cache.poor.json --guard guard.poor.json .env.poor
 ```
 
-Key variables are grouped by section inside the file:
+Key variables are grouped by section inside each `.env.<tier>` file:
 
 | Runtime Paths | Purpose |
 | --- | --- |
@@ -50,10 +55,12 @@ Key variables are grouped by section inside the file:
 | --- | --- |
 | `RPC_URL` | Solana endpoint used by scripts and Sugar (`https://api.mainnet-beta.solana.com`, `https://api.devnet.solana.com`, …). |
 | `KEYPAIR_PATH` | Absolute or project-relative path to the payer keypair (JSON). |
-| `CACHE_PATH` | Path to the Sugar cache produced during deploy. |
-| `GUARD_CONFIG_PATH` | Guard configuration file path consumed by the mint script. |
+| `CACHE_PATH` | Path to the Sugar cache produced during deploy (one per tier, e.g. `cache.poor.json`). |
+| `GUARD_CONFIG_PATH` | Guard configuration file path consumed by the mint script (e.g. `guard.poor.json`). |
 | `GUARD_LABEL` | Candy Guard label to target (`default` or any custom group). |
 | `COLLECTION_UPDATE_AUTHORITY` | Optional override when the on-chain authority differs from the cache. Leave blank to auto-detect. |
+| `COLLECTION_MINT` | Optional explicit collection mint; otherwise pulled from the cache to keep all tiers aligned. |
+| `THIRD_PARTY_SIGNER_KEYPAIR_PATH`, `THIRD_PARTY_SIGNER_PUBKEY` | Backend signer required by the `thirdPartySigner` guard (keypair file stays server-side, pubkey is stored on-chain). |
 | `COMPUTE_UNITS`, `PRIORITY_MICROLAMPORTS` | Compute budget tuning for the mint script (set `PRIORITY_MICROLAMPORTS` to `0` to disable). |
 
 | Collection Metadata | Purpose |
@@ -83,13 +90,14 @@ Key variables are grouped by section inside the file:
 
 | Guard Settings | Purpose |
 | --- | --- |
-| `SOL_PAYMENT_VALUE` | SOL cost per mint in the active guard group. |
-| `SOL_PAYMENT_DESTINATION` | Treasury wallet for guard payments. |
+| `SOL_PAYMENT_VALUE` | SOL cost per mint in the active guard group (use `null` for free mints). |
+| `SOL_PAYMENT_DESTINATION` | Treasury wallet for guard payments (ignored when value is `null`). |
+| `THIRD_PARTY_SIGNER_PUBKEY` | Public key registered in Candy Guard for server-side cosigning. |
 
 | Local Overrides | Purpose |
 | --- | --- |
 | `LOCAL_IS_MUTABLE`, `LOCAL_SOL_PAYMENT_VALUE`, `LOCAL_SOL_PAYMENT_DESTINATION` | Overrides for `config.local.json`. |
-| `LOCAL_UPLOAD_METHOD`, `LOCAL_RULE_SET`, `LOCAL_MAX_EDITION_SUPPLY` | Optional Sugar overrides for local workflows. |
+| `LOCAL_UPLOAD_METHOD`, `LOCAL_RULE_SET`, `LOCAL_MAX_EDITION_SUPPLY`, `LOCAL_THIRD_PARTY_SIGNER_PUBKEY` | Optional Sugar overrides for local workflows (including alternate cosigners). |
 | `LOCAL_PINATA_JWT`, `LOCAL_PINATA_API_GATEWAY`, `LOCAL_PINATA_CONTENT_GATEWAY`, `LOCAL_PINATA_PARALLEL_LIMIT` | Pinata overrides for local testing. |
 
 > **Never** commit `.env`. The root `.gitignore` already excludes it.
@@ -98,10 +106,12 @@ After editing `.env`, generate the Sugar configuration files directly from those
 
 ```bash
 npm install   # run once to pick up the dotenv dependency
-npm run generate-configs
+ENV_PATH=.env.poor npm run generate-configs
+ENV_PATH=.env.mid npm run generate-configs
+ENV_PATH=.env.rich npm run generate-configs
 ```
 
-This command writes `config.json`, `guard.config.json`, and `config.local.json` to the paths specified in `.env`. Re-run it whenever configuration values change.
+Each invocation writes tier-specific `config.json`, `guard.config.json`, and `config.local.json` to the paths specified in `.env.<tier>`. Re-run it whenever configuration values change.
 
 ---
 
@@ -126,43 +136,35 @@ This command writes `config.json`, `guard.config.json`, and `config.local.json` 
 
 ---
 
-## 4. Uploading Assets & Deploying a New Candy Machine
+## 4. Uploading Assets & Deploying Candy Machines
 
-1. **Authenticate** any third-party pinning (Pinata, nft.storage, …) referenced in `guard.config.json` or Sugar.
-2. **Upload** using Sugar (example):
-   ```bash
-   sugar upload --config guard.config.json --cache cache.json
-   ```
-3. **Deploy the Candy Machine**:
-   ```bash
-   sugar deploy --config guard.config.json --cache cache.json
-   ```
-4. **Attach guards** (if not bundled during deploy):
-   ```bash
-   sugar guard add --config guard.config.json --cache cache.json
-   ```
-5. **Verify**:
-   ```bash
-   sugar show --cache cache.json
-   ```
-   Confirm `items available`, `items redeemed`, `collection mint`, and guard settings.
+Run the Sugar workflow once per tier. Example for the **poor** tier (repeat for mid/rich with the matching configs and caches):
 
-> `cache.json` and `guard.config.json` are referenced by their absolute paths in `.env`. Update those paths whenever you relocate or regenerate the files.
+```bash
+dotenv -f .env.poor -- sugar upload --config config.poor.json --cache cache.poor.json
+dotenv -f .env.poor -- sugar deploy --config config.poor.json --cache cache.poor.json
+dotenv -f .env.poor -- sugar guard set --config guard.poor.json --cache cache.poor.json
+dotenv -f .env.poor -- sugar collection set --cache cache.poor.json --collection $COLLECTION_MINT
+dotenv -f .env.poor -- sugar collection verify --cache cache.poor.json --collection $COLLECTION_MINT
+```
+
+Double-check `sugar show --cache cache.poor.json` (and the other tiers) to confirm the collection mint and guard wiring. Keep every generated `cache.<tier>.json` handy—they are the source of truth for regenerating `.env.<tier>` files.
 
 ---
 
 ## 5. Guard Configuration Checklist
 
-`sugar` uses `guard.config.json` for Candy Guard runtime rules. Common edits:
+`sugar` uses tier-specific guard configs for Candy Guard runtime rules. Common edits:
 
-- `guards.default.solPayment.value` – SOL cost per mint.
-- `guards.default.solPayment.destination` – Treasury wallet (update in `.env` + `guard.config.json`).
-- Additional guard groups (for allowlists, token gates, etc.). Make sure the CLI label matches the `GUARD_LABEL` environment variable.
+- `guards.default.solPayment.value` – SOL cost per mint (set to `0` or remove for free mints).
+- `guards.default.solPayment.destination` – Treasury wallet (update in `.env.<tier>` and the guard file).
+- `guards.default.thirdPartySigner.signerKey` – Backend signer public key controlling access to the tier.
+- Additional guard groups (for allowlists, token gates, etc.). Ensure the CLI label matches `GUARD_LABEL`.
 
-After any change, run:
+After any change, run (per tier):
 
 ```bash
-sugar guard update --config guard.config.json --cache cache.json
+dotenv -f .env.poor -- sugar guard update --config guard.poor.json --cache cache.poor.json
 ```
 
 ---
@@ -175,15 +177,15 @@ The script in `umi/mint-guard.mjs` mints against a guarded Candy Machine while h
 
 ```bash
 cd hashlips/umi
-node mint-guard.mjs
+ENV_PATH=.env.poor node mint-guard.mjs
 ```
 
 What the script does:
 
-1. Loads `.env` (or the path provided through `ENV_PATH`).
-2. Reads `cache.json` and `guard.config.json` using the paths in the environment.
-3. Auto-detects the collection update authority on-chain; falls back to the override in `.env` when provided.
-4. Builds `mintArgs` for the `solPayment` guard destination.
+1. Loads `.env.<tier>` via `ENV_PATH` and resolves absolute paths (`PROJECT_ROOT`).
+2. Reads the tier-specific `cache` and guard configs defined in the environment.
+3. Auto-detects the collection update authority on-chain; falls back to the override when provided.
+4. Builds `mintArgs` dynamically for `solPayment` and/or `thirdPartySigner` guards.
 5. Prepends compute budget instructions (`COMPUTE_UNITS`, `PRIORITY_MICROLAMPORTS`).
 6. Outputs the transaction signature (base58), minted NFT address, and collection authority used.
 
@@ -194,11 +196,24 @@ If the transaction fails, the script surfaces Candy Guard logs for easier debugg
 - **Different guard labels**: set `GUARD_LABEL` in `.env` to the desired group.
 - **Higher priority fees**: raise `PRIORITY_MICROLAMPORTS` (e.g. `1000` for 0.000001 SOL per CU).
 - **Alternate cache/guard files**: point `CACHE_PATH` / `GUARD_CONFIG_PATH` to new JSON files.
+- **Backend signer rotation**: update `THIRD_PARTY_SIGNER_KEYPAIR_PATH` / `THIRD_PARTY_SIGNER_PUBKEY` and regenerate guard configs to rotate the cosigning key.
 - **Collection authority override**: populate `COLLECTION_UPDATE_AUTHORITY` only when the on-chain value differs from Sugar’s cache (otherwise detection is automatic).
 
 ---
 
-## 7. Operational Scripts
+## 7. Tier Routing & Backend Cosignature
+
+Backend steps to enforce the poor/mid/rich segmentation while keeping mints free:
+
+1. Evaluate the caller (wallet balance, off-chain scores, etc.) and pick a tier.
+2. Load the corresponding `.env.<tier>` (or set `ENV_PATH` when invoking scripts) so every path and guard key aligns with that Candy Machine.
+3. Build the mint transaction client-side and send it to the backend with the `thirdPartySigner` account left unsigned.
+4. The backend re-validates eligibility, signs with the `thirdPartySigner` keypair referenced in the tier env file, then relays the partially signed transaction.
+5. The client finalises the submission—without the backend signature, the guard rejects the mint.
+
+Because the same collection mint is shared across tiers, analytics and explorers still present a unified collection view.
+
+## 8. Operational Scripts
 
 ### Check the Collection Update Authority
 
@@ -220,7 +235,7 @@ Confirms how many mints were consumed versus total supply.
 
 ---
 
-## 8. Refreshing the Collection for a New Drop
+## 9. Refreshing the Collection for a New Drop
 
 When you want to launch another collection:
 
@@ -228,24 +243,24 @@ When you want to launch another collection:
 2. **Swap in new layers** and regenerate metadata (`npm run build`).
 3. **Upload** the new assets (Pinata, nft.storage, etc.).
 4. **Deploy** a fresh Candy Machine (create a new `cache.json`).
-5. **Update `.env`** with the new cache/guard paths, collection mint, and treasury destinations.
+5. **Update the `.env.<tier>` files** with the new cache/guard paths, collection mint, and third-party signer keys.
 6. **Run `mint-guard.mjs`** on Devnet to smoke-test the end-to-end flow before pointing to Mainnet.
 
 > Re-using an old Candy Machine is discouraged. Always deploy a new one to avoid state conflicts.
 
 ---
 
-## 9. Changing Wallets or Destinations
+## 10. Changing Wallets or Destinations
 
-- **Payer wallet**: update `KEYPAIR_PATH` in `.env` and ensure the new wallet is funded.
-- **SOL payment treasury**: edit `guard.config.json` (`solPayment.destination`) and `.env` if you store alternate destinations there. Follow with `sugar guard update`.
-- **Collection mint / authority**: update `cache.json` and re-run `mint-guard.mjs` once to verify—`check-collection.mjs` is a good sanity check.
+- **Payer wallet**: update `KEYPAIR_PATH` in the relevant `.env.<tier>` and ensure the new wallet is funded.
+- **SOL payment treasury**: edit `guard.<tier>.json` (`solPayment.destination`) and the matching `.env.<tier>` if you store alternate destinations there. Follow with `dotenv -f .env.<tier> -- sugar guard update`.
+- **Collection mint / authority**: update `cache.<tier>.json` and re-run `mint-guard.mjs` once to verify—`check-collection.mjs` is a good sanity check.
 
 Document every change in git (update `.env.example` if defaults change) and keep a copy of previous configs for auditability.
 
 ---
 
-## 10. Recommended Validation Workflow
+## 11. Recommended Validation Workflow
 
 1. **Local dry run**: `node mint-guard.mjs` on Devnet with test data.
 2. **On-chain check**: `sugar show` and `node scripts/check-collection.mjs` to confirm supply + authorities.
@@ -254,28 +269,28 @@ Document every change in git (update `.env.example` if defaults change) and keep
 
 ---
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 | Symptom | Fix |
 | --- | --- |
 | `Group not found` | Verify `GUARD_LABEL` matches a guard group in `guard.config.json`. Run `sugar guard show`. |
 | `IncorrectCollectionAuthority` | Ensure the collection mint’s update authority matches the guard label configuration. Let `mint-guard.mjs` auto-detect, or set `COLLECTION_UPDATE_AUTHORITY`. |
-| `Missing expected remaining account` | The guard runtime arguments were omitted. Confirm `guard.config.json` has `solPayment` under the active label and rerun the script. |
+| `Missing expected remaining account` | Guard runtime arguments were omitted. Confirm the tier guard config has `solPayment`/`thirdPartySigner` populated and rerun the script. |
 | `Program failed to complete (compute limit)` | Increase `COMPUTE_UNITS` and optionally `PRIORITY_MICROLAMPORTS`. |
 | `.env` not applied | Confirm the file path in `.env`, or set `ENV_PATH`. The script warns if the file is missing. |
 
 ---
 
-## 12. Version Control & Security Notes
+## 13. Version Control & Security Notes
 
-- Never commit private keys. Keep `.env`, wallet files, and API tokens outside version control.
-- Commit meaningful configuration changes (`guard.config.json`, `cache.json`, docs) and tag releases around deployments.
+- Never commit private keys. Keep `.env.<tier>`, wallet files, and API tokens outside version control.
+- Commit meaningful configuration changes (`guard.<tier>.json`, `cache.<tier>.json`, docs) and tag releases around deployments.
 - Review dependencies regularly; run `npm audit` in `umi/` to track vulnerabilities.
 - For production, restrict RPC access and consider dedicated infrastructure (QuickNode, Triton, etc.).
 
 ---
 
-## 13. Quick Reference Commands
+## 14. Quick Reference Commands
 
 ```bash
 # Install dependencies
@@ -284,22 +299,22 @@ cd hashlips/umi && npm install
 # Generate art assets
 npm run build
 
-# Upload & deploy
-sugar upload --config guard.config.json --cache cache.json
-sugar deploy --config guard.config.json --cache cache.json
-sugar guard add --config guard.config.json --cache cache.json
+# Upload & deploy (per tier)
+dotenv -f .env.poor -- sugar upload --config config.poor.json --cache cache.poor.json
+dotenv -f .env.poor -- sugar deploy --config config.poor.json --cache cache.poor.json
+dotenv -f .env.poor -- sugar guard set --config guard.poor.json --cache cache.poor.json
 
 # Update guards after edits
-sugar guard update --config guard.config.json --cache cache.json
+dotenv -f .env.poor -- sugar guard update --config guard.poor.json --cache cache.poor.json
 
 # Mint via guarded Candy Machine
-node mint-guard.mjs
+ENV_PATH=.env.poor node mint-guard.mjs
 
 # Inspect a minted NFT
 node scripts/check-collection.mjs <mint-address>
 
 # Check Candy Machine supply
-sugar show --cache cache.json | sed -n '/items redeemed/p'
+dotenv -f .env.poor -- sugar show --cache cache.poor.json | sed -n '/items redeemed/p'
 ```
 
 Keep this playbook updated as the workflow evolves. When in doubt, document deviations so the next operator can reproduce your steps precisely.

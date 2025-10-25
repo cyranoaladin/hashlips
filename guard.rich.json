@@ -1,0 +1,31 @@
+{
+  "tokenStandard": "nft",
+  "number": 10,
+  "symbol": "OINCO",
+  "sellerFeeBasisPoints": 1000,
+  "isMutable": true,
+  "isSequential": false,
+  "creators": [
+    {
+      "address": "5zHBXzhaqKXJRMd7KkuWsb4s8zPyakKdijr9E3jgyG8Z",
+      "share": 100
+    }
+  ],
+  "uploadMethod": "local",
+  "ruleSet": null,
+  "awsConfig": null,
+  "sdriveApiKey": null,
+  "nftStorageAuthToken": null,
+  "shdwStorageAccount": null,
+  "pinataConfig": null,
+  "hiddenSettings": null,
+  "guards": {
+    "default": {
+      "solPayment": {
+        "value": 1,
+        "destination": "5zHBXzhaqKXJRMd7KkuWsb4s8zPyakKdijr9E3jgyG8Z"
+      }
+    }
+  },
+  "maxEditionSupply": null
+}

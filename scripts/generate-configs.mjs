@@ -170,6 +170,40 @@ const resolveOutputPath = (envKey, fallbackName) => {
   return path.isAbsolute(raw) ? raw : path.resolve(PROJECT_ROOT, raw);
 };
 
+const composeGuard = ({
+  solValueKey,
+  solDestinationKey,
+  thirdPartyKey,
+  fallback = {},
+}) => {
+  const guard = JSON.parse(JSON.stringify(fallback ?? {})) || {};
+
+  const solValue = getNullableNumber(solValueKey, fallback?.solPayment?.value ?? null);
+  if (solValue !== null) {
+    const destination = optionalEnv(solDestinationKey, fallback?.solPayment?.destination ?? null);
+    if (!destination) {
+      throw new Error(`${solDestinationKey} must be provided when ${solValueKey} is set`);
+    }
+    guard.solPayment = {
+      value: solValue,
+      destination,
+    };
+  } else if (guard.solPayment) {
+    delete guard.solPayment;
+  }
+
+  const thirdPartySigner = optionalEnv(thirdPartyKey, fallback?.thirdPartySigner?.signerKey ?? null);
+  if (thirdPartySigner) {
+    guard.thirdPartySigner = {
+      signerKey: thirdPartySigner,
+    };
+  } else if (guard.thirdPartySigner) {
+    delete guard.thirdPartySigner;
+  }
+
+  return guard;
+};
+
 try {
   const creators = parseCreators();
   const uploadMethod = requireEnv('UPLOAD_METHOD');
@@ -195,21 +229,14 @@ try {
     maxEditionSupply: getNullableNumber('MAX_EDITION_SUPPLY'),
   };
 
-  const solPaymentValue = getNullableNumber('SOL_PAYMENT_VALUE');
-  if (solPaymentValue === null) {
-    throw new Error('SOL_PAYMENT_VALUE must be provided');
-  }
-  const solPaymentDestination = requireEnv('SOL_PAYMENT_DESTINATION');
-
   const guardConfig = JSON.parse(JSON.stringify(configBase));
-  guardConfig.guards = {
-    default: {
-      solPayment: {
-        value: solPaymentValue,
-        destination: solPaymentDestination,
-      },
-    },
-  };
+  const defaultGuard = composeGuard({
+    solValueKey: 'SOL_PAYMENT_VALUE',
+    solDestinationKey: 'SOL_PAYMENT_DESTINATION',
+    thirdPartyKey: 'THIRD_PARTY_SIGNER_PUBKEY',
+    fallback: {},
+  });
+  guardConfig.guards = { default: defaultGuard };
 
   const localUploadMethod = optionalEnv('LOCAL_UPLOAD_METHOD', configBase.uploadMethod);
   const localConfig = JSON.parse(JSON.stringify(configBase));
@@ -219,22 +246,13 @@ try {
   localConfig.maxEditionSupply = getNullableNumber('LOCAL_MAX_EDITION_SUPPLY', configBase.maxEditionSupply);
   localConfig.pinataConfig = buildLocalPinataConfig(localUploadMethod, configBase.pinataConfig);
 
-  const localSolPaymentValue = getNullableNumber('LOCAL_SOL_PAYMENT_VALUE', solPaymentValue);
-  if (localSolPaymentValue === null) {
-    throw new Error('LOCAL_SOL_PAYMENT_VALUE must be provided (or inherit from SOL_PAYMENT_VALUE)');
-  }
-  const localSolPaymentDestination = optionalEnv('LOCAL_SOL_PAYMENT_DESTINATION', solPaymentDestination);
-  if (!localSolPaymentDestination) {
-    throw new Error('LOCAL_SOL_PAYMENT_DESTINATION must be provided (or inherit from SOL_PAYMENT_DESTINATION)');
-  }
-  localConfig.guards = {
-    default: {
-      solPayment: {
-        value: localSolPaymentValue,
-        destination: localSolPaymentDestination,
-      },
-    },
-  };
+  const localGuard = composeGuard({
+    solValueKey: 'LOCAL_SOL_PAYMENT_VALUE',
+    solDestinationKey: 'LOCAL_SOL_PAYMENT_DESTINATION',
+    thirdPartyKey: 'LOCAL_THIRD_PARTY_SIGNER_PUBKEY',
+    fallback: defaultGuard,
+  });
+  localConfig.guards = { default: localGuard };
 
   const configPath = resolveOutputPath('CONFIG_JSON_PATH', 'config.json');
   const guardConfigPath = resolveOutputPath('GUARD_CONFIG_JSON_PATH', 'guard.config.json');

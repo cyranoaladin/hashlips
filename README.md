@@ -11,11 +11,13 @@
 - Environment-driven configuration (`.env.example`) with exhaustive inline guidance to remove trial-and-error.
 - Automated config generation (`npm run generate-configs`) guarantees `config.json`, `guard.config.json`, and `config.local.json` stay in sync.
 - Guarded mint script (`umi/mint-guard.mjs`) dynamically loads compute budgets, collection authority, and guard destinations from cache/config.
+- Three-tier deployment pattern (poor / mid / rich) where each Candy Machine verifies into the same programmable collection and is gated server-side via `thirdPartySigner`.
 - Operator playbooks in English covering Sugar CLI, Umi scripting, troubleshooting, and security practices.
 - Smoke-test command (`npm test`) validates both dependency trees before any demo.
 
 ## Repository Tour
 - `layers/` – Art layers used by the HashLips Art Engine for trait composition.
+- `assets_poor/`, `assets_mid/`, `assets_rich/` – Placeholders for tier-specific Sugar uploads generated from HashLips outputs.
 - `scripts/` – Automation (`generate-configs.mjs`, `gen-env.sh`, `smoke-test.js`).
 - `umi/` – Isolated Node workspace for Umi scripts and Candy Machine integration.
 - `docs/` – Hackathon-ready documentation: full onboarding guide + guard playbook.
@@ -29,6 +31,11 @@ npm install
 cd umi && npm install && cd ..
 cp .env.example .env   # or scripts/gen-env.sh .env to auto-fill from cache.json
 npm run generate-configs
+
+# Optional: generate tier-specific env files
+# scripts/gen-env.sh --cache cache.poor.json --guard guard.poor.json .env.poor
+# scripts/gen-env.sh --cache cache.mid.json  --guard guard.mid.json  .env.mid
+# scripts/gen-env.sh --cache cache.rich.json --guard guard.rich.json .env.rich
 ```
 
 > Skiping `cd umi && npm install` will break the guarded mint scripts. Re-run the install inside `umi/` whenever dependencies change.
@@ -36,7 +43,7 @@ npm run generate-configs
 ## Validation Checklist
 - `npm test` – Smoke check that both dependency trees resolve (`canvas`, Umi, dotenv).
 - `npm run build` – Generates 10 sample items to prove the HashLips pipeline works end-to-end.
-- Optional: `node umi/mint-guard.mjs` – Performs a Devnet mint using the guard settings defined in `.env`.
+- Optional: `node umi/mint-guard.mjs` – Performs a Devnet mint using the guard settings defined in the active `.env` (swap to `.env.poor`, `.env.mid`, `.env.rich` depending on the tier).
 
 ## Documentation for Reviewers
 - **Operations Manual** – [`docs/full-project-guide.md`](docs/full-project-guide.md): full onboarding, environment setup, Candy Machine deployment, maintenance.
@@ -45,10 +52,18 @@ npm run generate-configs
 - Legacy French version of the full guide is still available as [`docs/full-project-guide.fr.md`](docs/full-project-guide.fr.md).
 
 ## Demo Talking Points
-1. Start from the clean repo → run `scripts/gen-env.sh .env` to ingest an existing Sugar cache and pre-fill variables.
-2. `npm run generate-configs` to align on-chain guard expectations with local configuration.
-3. Showcase `npm run build` (art generation) followed by `node umi/mint-guard.mjs` to mint on Devnet.
-4. Use the playbook docs to highlight guard safety (solPayment destination, compute unit tuning, collection authority checks).
+1. Start from the clean repo → run `scripts/gen-env.sh --cache cache.poor.json --guard guard.poor.json .env.poor` (repeat for mid/rich) to scaffold tier-specific environments.
+2. `npm run generate-configs` (with the matching `.env.<tier>` loaded) to align on-chain guard expectations with local configuration.
+3. Showcase `npm run build` (art generation) followed by `node umi/mint-guard.mjs` with the appropriate `.env.<tier>` to mint on Devnet.
+4. Highlight the shared collection verification: `sugar collection verify --cache cache.<tier>.json --collection $COLLECTION_MINT` proves every tiered machine reports into the same programmable collection.
+5. Use the playbook docs to explain pNFT + rule set enforcement and `thirdPartySigner` gating coming from the backend.
+
+## Tiered Candy Machine Blueprint
+- **One collection mint** (`COLLECTION_MINT`) verified for all Candy Machines. Sugar's `collection set/verify` commands ensure poor/mid/rich deploys reference the same collection and authority.
+- **Three Candy Machines** (`cache.poor.json`, `cache.mid.json`, `cache.rich.json`) each uploaded from tier-specific assets and sharing the rule set + symbol.
+- **Free minting** guarded by `thirdPartySigner`. The backend inspects wallet SOL balance, picks the correct Candy Machine, loads the corresponding `.env.<tier>`, signs with the server key, and forwards the transaction.
+- **Programmable NFTs (pNFT)** with a `no-transfer` rule set prevent secondary market flips while keeping all metadata under the same collection banner.
+- **Automation helpers** (`scripts/gen-env.sh`, `npm run generate-configs`) accept cache/guard overrides so operators can regenerate configs for each tier without manual edits.
 
 ## Maintainers & Contact
 - **Kamel Ben Rhouma (treizeb)** – Lead developer & hackathon presenter.

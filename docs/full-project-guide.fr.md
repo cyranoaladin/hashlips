@@ -2,6 +2,8 @@
 
 Ce guide pas-à-pas décrit l’intégralité du workflow Oinconomics : installation de l’environnement, génération des assets HashLips, configuration Candy Machine + Candy Guard, scripts Umi, déploiement et opérations post-mint. L’objectif est qu’un nouveau membre puisse reproduire le projet sans assistance.
 
+> Nouveauté : le projet pilote désormais **trois Candy Machines** (`poor`, `mid`, `rich`) qui pointent toutes vers **une seule collection programmable**. Un serveur signe chaque mint via le guard `thirdPartySigner` pour attribuer le bon palier tout en conservant un mint gratuit.
+
 ---
 
 ## 1. Prérequis & Installation
@@ -38,7 +40,10 @@ npm install
 
 ```
 hashlips/
-├── assets/                 # JSON metadata collection + collection.json
+├── assets/                 # JSON metadata collection + collection.json (legacy)
+├── assets_poor/            # Assets générés pour le palier "poor"
+├── assets_mid/             # Assets générés pour le palier "mid"
+├── assets_rich/            # Assets générés pour le palier "rich"
 ├── build/                  # Généré par HashLips (images + metadata)
 ├── constants/
 │   └── network.js          # Définit les réseaux (sol, devnet, etc.)
@@ -57,11 +62,17 @@ hashlips/
 │   ├── scripts/
 │   │   └── check-collection.mjs
 │   └── package.json        # Dépendances Umi
-├── .env                    # Variables d’environnement (non versionné)
+├── .env.poor /.env.mid /.env.rich   # Variables d’environnement par palier (non versionnées)
 ├── .env.example            # Modèle complet de variables
-├── cache.json              # État Candy Machine (généré par Sugar)
-├── config.json             # Config Sugar (générée via script)
-├── guard.config.json       # Config guard Sugar (générée via script)
+├── cache.poor.json         # État Candy Machine (palier poor)
+├── cache.mid.json          # État Candy Machine (palier mid)
+├── cache.rich.json         # État Candy Machine (palier rich)
+├── config.poor.json        # Config Sugar générée pour le palier poor
+├── config.mid.json         # Config Sugar générée pour le palier mid
+├── config.rich.json        # Config Sugar générée pour le palier rich
+├── guard.poor.json         # Config Candy Guard palier poor
+├── guard.mid.json          # Config Candy Guard palier mid
+├── guard.rich.json         # Config Candy Guard palier rich
 ├── config.local.json       # Variante locale (générée via script)
 ├── package.json            # Scripts HashLips + generate-configs
 └── README.md               # A compléter selon besoins
@@ -71,23 +82,26 @@ hashlips/
 
 ## 3. Variables d’Environnement
 
-Toutes les valeurs personnalisées résident dans `.env` (copier depuis `.env.example`).
+Chaque palier dispose de son propre fichier `.env.<palier>` (jamais versionné). Dupliquez le modèle puis complétez les valeurs :
 
 ```bash
-cp .env.example .env
+cp .env.example .env.poor
+cp .env.example .env.mid
+cp .env.example .env.rich
+# ou générer automatiquement : scripts/gen-env.sh --cache cache.poor.json --guard guard.poor.json .env.poor
 ```
 
 ### 3.1 Sections clés
 
-- **Runtime paths** : `PROJECT_ROOT`, `CONFIG_JSON_PATH`, etc.
-- **Solana + Umi scripts** : `RPC_URL`, `KEYPAIR_PATH`, `CACHE_PATH`, `GUARD_CONFIG_PATH`, `GUARD_LABEL`, `COLLECTION_UPDATE_AUTHORITY`, `COMPUTE_UNITS`, `PRIORITY_MICROLAMPORTS`.
-- **Metadata** : `COLLECTION_NAME_PREFIX`, `COLLECTION_DESCRIPTION`, `COLLECTION_BASE_URI`, `COLLECTION_SIZE`, `COLLECTION_SYMBOL`, `COLLECTION_EXTERNAL_URL`, `COLLECTION_NETWORK`, etc.
+- **Chemins runtime** : `PROJECT_ROOT`, `CONFIG_JSON_PATH`, `GUARD_CONFIG_JSON_PATH`, `CONFIG_LOCAL_JSON_PATH` (pointez vers les fichiers du palier).
+- **Solana + scripts Umi** : `RPC_URL`, `KEYPAIR_PATH`, `CACHE_PATH`, `GUARD_CONFIG_PATH`, `GUARD_LABEL`, `COLLECTION_UPDATE_AUTHORITY`, `COLLECTION_MINT`, `COMPUTE_UNITS`, `PRIORITY_MICROLAMPORTS`, `THIRD_PARTY_SIGNER_KEYPAIR_PATH`, `THIRD_PARTY_SIGNER_PUBKEY`.
+- **Métadonnées** : `COLLECTION_NAME_PREFIX`, `COLLECTION_DESCRIPTION`, `COLLECTION_BASE_URI`, `COLLECTION_SIZE`, `COLLECTION_SYMBOL`, `COLLECTION_EXTERNAL_URL`, `COLLECTION_NETWORK`, etc.
 - **Creators** : `CREATOR_ADDRESS`, `CREATOR_SHARE`, `COLLECTION_CREATORS_JSON` (JSON optionnel pour plusieurs créateurs).
-- **Candy Machine** : `TOKEN_STANDARD`, `IS_MUTABLE`, `IS_SEQUENTIAL`, `UPLOAD_METHOD`, `RULE_SET`, `MAX_EDITION_SUPPLY`, `HIDDEN_SETTINGS`, etc.
+- **Candy Machine** : `TOKEN_STANDARD` (désormais `pnft`), `IS_MUTABLE`, `IS_SEQUENTIAL`, `UPLOAD_METHOD`, `RULE_SET` (adresse du rule set "no-transfer"), `MAX_EDITION_SUPPLY`, `HIDDEN_SETTINGS`, etc.
 - **Pinata** : `PINATA_JWT`, `PINATA_API_GATEWAY`, `PINATA_CONTENT_GATEWAY`, `PINATA_PARALLEL_LIMIT`.
-- **Guards** : `SOL_PAYMENT_VALUE`, `SOL_PAYMENT_DESTINATION`, plus versions locales (`LOCAL_*`).
+- **Guards** : `SOL_PAYMENT_VALUE` (mettre `null` pour un mint gratuit), `SOL_PAYMENT_DESTINATION`, `THIRD_PARTY_SIGNER_PUBKEY`, plus variantes locales (`LOCAL_*`, dont `LOCAL_THIRD_PARTY_SIGNER_PUBKEY`).
 
-> Le champ `KEYPAIR_PATH` doit pointer vers un fichier JSON secret Solana ; utilisez `solana config get` pour le récupérer.
+> Chaque `KEYPAIR_PATH` (dans `.env.poor`, `.env.mid`, `.env.rich`) doit pointer vers un fichier JSON secret Solana ; utilisez `solana config get` pour le récupérer.
 
 ---
 
@@ -120,19 +134,21 @@ npm run build
 
 ## 5. Génération Automatique des Configs Sugar
 
-Les fichiers `config.json`, `guard.config.json`, `config.local.json` sont générés depuis `.env`.
+Les fichiers de configuration sont générés pour chaque palier via `.env.<palier>`.
 
 ```bash
-npm run generate-configs
+ENV_PATH=.env.poor npm run generate-configs
+ENV_PATH=.env.mid npm run generate-configs
+ENV_PATH=.env.rich npm run generate-configs
 ```
 
-Ce script (`scripts/generate-configs.mjs`) utilise les variables suivantes :
+Le script (`scripts/generate-configs.mjs`) s’appuie sur les variables suivantes :
 
 - `TOKEN_STANDARD`, `COLLECTION_SIZE`, `COLLECTION_SYMBOL`, `COLLECTION_SELLER_FEE_BPS`, `IS_MUTABLE`, `UPLOAD_METHOD`, etc.
 - Configuration Pinata (nécessite `PINATA_JWT`, `PINATA_API_GATEWAY`, `PINATA_CONTENT_GATEWAY`).
-- Paramètres Guards : `SOL_PAYMENT_VALUE` (prix mint), `SOL_PAYMENT_DESTINATION` (trésorerie), plus variantes locales `LOCAL_*`.
+- Paramètres de guards : `SOL_PAYMENT_VALUE` / `SOL_PAYMENT_DESTINATION` (facultatifs), `THIRD_PARTY_SIGNER_PUBKEY`, plus variantes locales `LOCAL_*`.
 
-Il enregistre les fichiers au chemin indiqué par `CONFIG_JSON_PATH`, `GUARD_CONFIG_JSON_PATH`, `CONFIG_LOCAL_JSON_PATH` (défauts : racine du projet).
+Chaque exécution écrit `config.<palier>.json`, `guard.<palier>.json` et `config.local.json` selon les chemins définis dans l’environnement.
 
 ---
 
