@@ -22,7 +22,8 @@
     "update_info": "node utils/update_info.js",
     "preview_gif": "node utils/preview_gif.js",
     "generate_metadata": "node utils/generate_metadata.js",
-    "generate-configs": "node scripts/generate-configs.mjs"
+    "generate-configs": "node scripts/generate-configs.mjs",
+    "test": "node scripts/smoke-test.js"
   },
   "author": "Daniel Eugene Botha (HashLips)",
   "license": "MIT",
@@ -38,6 +39,5 @@
     "sha1": "^1.1.1",
     "dotenv": "^16.4.5"
   },
-  "keywords": [],
-  "type": "module"
+  "keywords": []
 }

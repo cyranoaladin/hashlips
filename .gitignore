@@ -93,6 +93,7 @@ typings/
 
 .env
 .env.test
+.env.backup.*
 
 # parcel-bundler cache (https://parceljs.org/)
 
@@ -148,3 +149,5 @@ config.local.json
 cache.backup*.json
 mint.guard.log
 deploy-dev.log
+umi/*.backup.mjs
+umi/*.b64

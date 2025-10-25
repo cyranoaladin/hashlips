@@ -17,6 +17,24 @@ cd .. && npm run generate-configs
 
 Ces commandes installent les dépendances et génèrent `config.json`, `guard.config.json` et `config.local.json` à partir de vos variables d'environnement. Reportez-vous ensuite aux guides ci-dessus pour suivre l'intégralité du flux de travail.
 
+> ⚠️ Si vous omettez `cd umi && npm install`, les scripts Umi échoueront avec `Error: Cannot find module`. Répétez l'installation dans `umi/` à chaque nouveau clone ou après une mise à jour des dépendances.
+
+Pour valider rapidement votre setup, exécutez :
+
+```bash
+npm test
+```
+
+Cette vérification légère confirme la présence des dépendances racine et Umi.
+
+Pour initialiser un `.env` à partir de `cache.json`, tu peux aussi lancer :
+
+```bash
+scripts/gen-env.sh .env
+```
+
+Le script sauvegarde l'ancien `.env`, récupère automatiquement `candyMachineCreator` et prépare toutes les variables décrites dans `.env.example`.
+
 ![](https://github.com/HashLips/hashlips_art_engine/blob/main/logo.png)
 
 All the code in these repos was created and explained by HashLips on the main YouTube channel.
