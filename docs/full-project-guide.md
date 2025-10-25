@@ -1,255 +1,222 @@
-# Guide Complet Oinconomics NFT Project
+# Oinconomics End-to-End Guide
 
-Ce guide pas-à-pas décrit l’intégralité du workflow Oinconomics : installation de l’environnement, génération des assets HashLips, configuration Candy Machine + Candy Guard, scripts Umi, déploiement et opérations post-mint. L’objectif est qu’un nouveau membre puisse reproduire le projet sans assistance.
+_This handbook accompanies the MVP presented by **Kamel Ben Rhouma (treizeb)** at the Cypherpunk Hackathon (Colosseum / Solana)._ It explains how to reproduce the entire pipeline—from local asset generation to guarded Candy Machine mints—on any workstation.
 
 ---
 
-## 1. Prérequis & Installation
+## 1. Architecture at a Glance
 
-### 1.1 Logiciels système
+| Layer | Purpose | Tooling |
+| --- | --- | --- |
+| Art generation | Produce layered PNG assets + metadata | HashLips Art Engine (Node.js) |
+| Configuration | Materialize Candy Machine + guard configs from `.env` | `npm run generate-configs` (custom script) |
+| Deployment | Upload assets, deploy Candy Machine, configure Candy Guard | Sugar CLI + Solana CLI |
+| Guarded minting | Execute mints with compute budget + guard enforcement | Umi SDK (`umi/mint-guard.mjs`) |
+| Documentation | Onboarding, troubleshooting, SOPs | `docs/*.md`, `.env.example` |
 
-- **Node.js 18 ou 20** (LTS) avec `npm`. (Node 22 fonctionne, mais nécessite `canvas` ≥ 2.11.2.)
-- **Git** pour cloner le dépôt.
-- **Rust & Cargo** (requis par `sugar`), installables via `rustup`.
-- **Solana CLI** (1.18+) pour interagir avec la blockchain.
-- **Sugar CLI** : `cargo install sugar-cli`.
-- **Python 3** (pour compilation `canvas` si nécessaire).
+---
 
-### 1.2 Dépendances Node.js
+## 2. Workstation Prerequisites
 
-Dans la racine du projet (`hashlips/`) :
+Install the following packages before cloning the repository:
+
+| Requirement | Version / Notes |
+| --- | --- |
+| Node.js | 18.x or 20.x LTS (Node 22 works with `canvas >= 2.11.2`) |
+| npm | Ships with Node; ensure `npm -v` ≥ 9 |
+| Git | For cloning and version control |
+| Python 3 | Required to build native `canvas` bindings on Linux |
+| Rust toolchain | Install via `rustup` (needed by Sugar CLI) |
+| Solana CLI | 1.18+ recommended |
+| Sugar CLI | `cargo install sugar-cli` |
+| jq | Required by `scripts/gen-env.sh` |
+
+> Mac users: install dependencies via Homebrew (`brew install node python rust solana-cli jq`). Linux users: use your distro package manager and `rustup`.
+
+---
+
+## 3. Repository Setup
 
 ```bash
+# Clone and enter the project
+git clone https://github.com/cyranoaladin/hashlips.git
+cd hashlips
+
+# Install HashLips root dependencies (canvas, dotenv, etc.)
 npm install
-```
 
-Dans le sous-dossier Umi (`hashlips/umi/`) :
-
-```bash
+# Install the isolated Umi workspace dependencies
 cd umi
 npm install
+cd ..
 ```
 
-> `npm install` installe notamment `canvas`, `dotenv`, et toutes les dépendances Umi/Candy Machine.
+> Forgetting the `umi/` installation is the #1 cause of "Cannot find module" errors when running the mint scripts.
 
----
-
-## 2. Structure du Projet
+### Directory Layout
 
 ```
 hashlips/
-├── assets/                 # JSON metadata collection + collection.json
-├── build/                  # Généré par HashLips (images + metadata)
-├── constants/
-│   └── network.js          # Définit les réseaux (sol, devnet, etc.)
-├── docs/
-│   ├── full-project-guide.md   # Guide actuel
-│   └── umi-guard-playbook.md   # Documentation mint Umi + guards
-├── layers/                 # Dossiers de calques (HashLips)
-├── modules/                # Scripts HashLips (HashlipsGiffer.js)
-├── scripts/
-│   └── generate-configs.mjs    # Génère config.json/guard.config.json
-├── src/
-│   ├── config.js           # Configuration HashLips (pilotée par .env)
-│   └── main.js             # Logiciel de génération HashLips
-├── umi/
-│   ├── mint-guard.mjs      # Script de mint Umi
-│   ├── scripts/
-│   │   └── check-collection.mjs
-│   └── package.json        # Dépendances Umi
-├── .env                    # Variables d’environnement (non versionné)
-├── .env.example            # Modèle complet de variables
-├── cache.json              # État Candy Machine (généré par Sugar)
-├── config.json             # Config Sugar (générée via script)
-├── guard.config.json       # Config guard Sugar (générée via script)
-├── config.local.json       # Variante locale (générée via script)
-├── package.json            # Scripts HashLips + generate-configs
-└── README.md               # A compléter selon besoins
+├─ assets/             # Layer metadata samples
+├─ build/              # Generated images + json (overwritten by npm run build)
+├─ docs/               # Onboarding + playbooks
+├─ layers/             # Artwork layers used by HashLips
+├─ scripts/            # Automation helpers (config generation, smoke tests, env generator)
+├─ umi/                # Dedicated Node project for Umi & Candy Machine operations
+└─ ...
 ```
 
 ---
 
-## 3. Variables d’Environnement
+## 4. Environment Configuration
 
-Toutes les valeurs personnalisées résident dans `.env` (copier depuis `.env.example`).
+All secrets and deployment-specific values live in `.env` (never commit it). Start from the documented template:
 
 ```bash
 cp .env.example .env
+# or auto-fill from cache.json (post-deploy) → scripts/gen-env.sh .env
 ```
 
-### 3.1 Sections clés
+Key sections inside `.env`:
 
-- **Runtime paths** : `PROJECT_ROOT`, `CONFIG_JSON_PATH`, etc.
-- **Solana + Umi scripts** : `RPC_URL`, `KEYPAIR_PATH`, `CACHE_PATH`, `GUARD_CONFIG_PATH`, `GUARD_LABEL`, `COLLECTION_UPDATE_AUTHORITY`, `COMPUTE_UNITS`, `PRIORITY_MICROLAMPORTS`.
-- **Metadata** : `COLLECTION_NAME_PREFIX`, `COLLECTION_DESCRIPTION`, `COLLECTION_BASE_URI`, `COLLECTION_SIZE`, `COLLECTION_SYMBOL`, `COLLECTION_EXTERNAL_URL`, `COLLECTION_NETWORK`, etc.
-- **Creators** : `CREATOR_ADDRESS`, `CREATOR_SHARE`, `COLLECTION_CREATORS_JSON` (JSON optionnel pour plusieurs créateurs).
-- **Candy Machine** : `TOKEN_STANDARD`, `IS_MUTABLE`, `IS_SEQUENTIAL`, `UPLOAD_METHOD`, `RULE_SET`, `MAX_EDITION_SUPPLY`, `HIDDEN_SETTINGS`, etc.
-- **Pinata** : `PINATA_JWT`, `PINATA_API_GATEWAY`, `PINATA_CONTENT_GATEWAY`, `PINATA_PARALLEL_LIMIT`.
-- **Guards** : `SOL_PAYMENT_VALUE`, `SOL_PAYMENT_DESTINATION`, plus versions locales (`LOCAL_*`).
+1. **Project paths** – `PROJECT_ROOT`, config output paths.
+2. **Solana & Umi** – RPC endpoint, keypair JSON, Candy Machine cache.
+3. **Candy Machine metadata** – collection name, symbol, royalty basis points, creators.
+4. **Upload backend** – Pinata credentials or other storage providers.
+5. **Candy Guard** – solPayment price and destination.
+6. **Local overrides** – convenient toggles for dev/test sessions.
 
-> Le champ `KEYPAIR_PATH` doit pointer vers un fichier JSON secret Solana ; utilisez `solana config get` pour le récupérer.
+> The template documents every variable with English annotations so new operators know where to source values and which fields are optional.
+
+### Environment Generation from `cache.json`
+
+After deploying once with Sugar, use `scripts/gen-env.sh` to extract the correct `COLLECTION_UPDATE_AUTHORITY` (the `candyMachineCreator` PDA). The script:
+
+1. Backs up any existing `.env`.
+2. Reads `program.candyMachineCreator` from the given cache.
+3. Writes a fresh `.env` with sane defaults and reminders of secrets to fill in.
 
 ---
 
-## 4. Génération des Assets (HashLips Art Engine)
+## 5. Configuration Generation
 
-### 4.1 Préparer les calques
-
-- Organiser les dossiers `layers/1.Background/`, `layers/2.Skin/`, etc.
-- Respecter la nomenclature HashLips `Nom#Rareté.png` ou `Nom.png`.
-
-### 4.2 Configuration (src/config.js)
-
-- Le fichier lit directement `.env`. Remplir les variables avant d’exécuter HashLips.
-- `COLLECTION_NETWORK` doit correspondre à une entrée dans `constants/network.js` (`sol`, `eth`, `devnet`).
-
-### 4.3 Génération des images
-
-```bash
-npm run build
-```
-
-- Produit `build/images/` et `build/json/`.
-
-### 4.4 Vérifications
-
-- Les fichiers JSON générés reprennent les informations `.env` (nom, symbole, créateurs, etc.).
-- Ajuster `COLLECTION_BASE_URI` après upload IPFS (ex : Pinata).
-
----
-
-## 5. Génération Automatique des Configs Sugar
-
-Les fichiers `config.json`, `guard.config.json`, `config.local.json` sont générés depuis `.env`.
+With `.env` populated, run:
 
 ```bash
 npm run generate-configs
 ```
 
-Ce script (`scripts/generate-configs.mjs`) utilise les variables suivantes :
+This script emits three JSON files (paths configurable via `.env`):
 
-- `TOKEN_STANDARD`, `COLLECTION_SIZE`, `COLLECTION_SYMBOL`, `COLLECTION_SELLER_FEE_BPS`, `IS_MUTABLE`, `UPLOAD_METHOD`, etc.
-- Configuration Pinata (nécessite `PINATA_JWT`, `PINATA_API_GATEWAY`, `PINATA_CONTENT_GATEWAY`).
-- Paramètres Guards : `SOL_PAYMENT_VALUE` (prix mint), `SOL_PAYMENT_DESTINATION` (trésorerie), plus variantes locales `LOCAL_*`.
+- `config.json` – Standard Candy Machine configuration.
+- `guard.config.json` – Candy Guard groups populated with the solPayment guard.
+- `config.local.json` – Local override version for rapid testing.
 
-Il enregistre les fichiers au chemin indiqué par `CONFIG_JSON_PATH`, `GUARD_CONFIG_JSON_PATH`, `CONFIG_LOCAL_JSON_PATH` (défauts : racine du projet).
+Each invocation overwrites the files, ensuring they never drift from the source-of-truth environment variables.
 
 ---
 
-## 6. Upload & Déploiement Candy Machine (Sugar)
+## 6. Asset Generation (HashLips)
 
-### 6.1 Préparer les assets
-
-- Upload IPFS (Pinata) selon la méthode indiquée par `UPLOAD_METHOD`.
-- Mettre à jour `COLLECTION_BASE_URI` si nécessaire.
-
-### 6.2 Commandes Sugar (Devnet)
+Create or update your art layers in `layers/`. When ready, generate the collection preview:
 
 ```bash
-sugar upload --config guard.config.json --cache cache.json
-sugar deploy --config guard.config.json --cache cache.json
-sugar guard add --config guard.config.json --cache cache.json
+npm run build
 ```
 
-- `cache.json` contient les adresses Candy Machine, Candy Guard, collection mint, etc.
+The command wipes `build/`, recreates the directory tree, and produces both PNG images and JSON metadata.
 
-### 6.3 Vérification
+Smoke test before demos:
 
 ```bash
-sugar show --cache cache.json
+npm test
 ```
 
-- Vérifier `items available`, `items redeemed`, `collection mint`, `guards`.
-
-### 6.4 Mise à jour des guards
-
-Pour changer le prix ou la destination :
-
-1. Modifier `.env` (`SOL_PAYMENT_VALUE`, `SOL_PAYMENT_DESTINATION`).
-2. Regénérer `guard.config.json` via `npm run generate-configs`.
-3. Appliquer :
-   ```bash
-   sugar guard update --config guard.config.json --cache cache.json
-   ```
+This runs `scripts/smoke-test.js`, verifying that the root and Umi dependency trees are installed (`canvas`, `@metaplex-foundation/umi`, `dotenv`).
 
 ---
 
-## 7. Scripts Umi
+## 7. Candy Machine Deployment with Sugar
 
-### 7.1 `mint-guard.mjs`
-
-- Charge `.env` (via `dotenv`).
-- Vérifie `RPC_URL`, `KEYPAIR_PATH`, `CACHE_PATH`, `GUARD_CONFIG_PATH`, `GUARD_LABEL`, `COMPUTE_UNITS`, `PRIORITY_MICROLAMPORTS`.
-- Résout les adresses Candy Machine + Guard depuis `cache.json`.
-- Détecte l’update authority réel via `fetchDigitalAsset`. Permet override `COLLECTION_UPDATE_AUTHORITY` si besoin.
-- Prépare les instructions compute budget selon `COMPUTE_UNITS` et `PRIORITY_MICROLAMPORTS`.
-- Ajoute l’argument `solPayment` pour le guard (`SOL_PAYMENT_DESTINATION`).
-- Envoie la transaction et affiche la signature.
-
-**Exécution :**
+A typical Devnet deployment flow:
 
 ```bash
-cd umi
-node mint-guard.mjs
+# 1. Upload assets
+dotenv -f .env -- sugar upload --cache cache.json
+
+# 2. Deploy the Candy Machine (uses config.json)
+dotenv -f .env -- sugar deploy --cache cache.json
+
+# 3. Set up the Candy Guard
+dotenv -f .env -- sugar guard set --cache cache.json --config guard.config.json
+
+# 4. Verify collection link
+dotenv -f .env -- sugar collection verify --cache cache.json
 ```
 
-> Nécessite un compte Solana financé (`KEYPAIR_PATH`).
-
-### 7.2 `check-collection.mjs`
-
-- Utilise `.env` et se connecte à `RPC_URL`.
-- Commande :
-  ```bash
-  node scripts/check-collection.mjs <mint-address>
-  ```
-- Affiche l’update authority d’un NFT et la collection attachée.
+**Tips**
+- Always run commands within an environment loader (e.g. `dotenv -f .env -- …`) to avoid mismatched paths.
+- After each Sugar step, inspect `cache.json` into version control (never commit secrets) for reproducibility.
+- Use Devnet airdrops (`solana airdrop 2`) to fund your wallet.
 
 ---
 
-## 8. Autorités & PDA
+## 8. Guarded Mint with Umi
 
-- `cache.json` contient `program.candyMachine`, `program.candyGuard`, `program.collectionMint`, `program.candyMachineCreator`.
-- `mint-guard.mjs` récupère l’update authority on-chain et compare.
-- Pour changer l’authority, utiliser `sugar collection set`. Ensuite mettre à jour `.env` si vous souhaitez forcer `COLLECTION_UPDATE_AUTHORITY`.
+Ensure `.env` still references the latest cache + guard files, then execute:
 
----
+```bash
+node umi/mint-guard.mjs
+```
 
-## 9. Processus complet (résumé)
+The script performs the following:
 
-1. **Cloner** le repo et installer dépendances (`npm install`, `cd umi && npm install`).
-2. **Créer `.env`** à partir de `.env.example` et renseigner toutes les valeurs.
-3. **Configurer** les calques HashLips (`layers/`), ajuster `.env` (nom, description, symbol, base URI).
-4. **Générer** les assets (`npm run build`).
-5. **Upload** des images/JSON (Pinata) → mettre à jour `COLLECTION_BASE_URI` si nécessaire.
-6. **Générer** les fichiers Sugar (`npm run generate-configs`).
-7. **Uploader & Déployer** via Sugar (`sugar upload / deploy / guard add`).
-8. **Tester** avec `sugar show` + `node mint-guard.mjs` (Devnet).
-9. **Ajuster guards** si besoin (`.env` → `npm run generate-configs` → `sugar guard update`).
-10. **Minter** (Devnet/Mainnet) via `mint-guard.mjs`.
-11. **Vérifier** la collection `node scripts/check-collection.mjs <mint>`, `sugar show`.
+1. Loads `.env` and resolves absolute paths (`PROJECT_ROOT`).
+2. Confirms key files exist (`cache.json`, guard config, keypair).
+3. Validates the on-chain collection update authority and auto-corrects if `cache.json` is stale.
+4. Builds compute budget instructions using `COMPUTE_UNITS` and `PRIORITY_MICROLAMPORTS`.
+5. Submits `mintV2` with the configured guard label and solPayment destination.
+
+Output includes the signature (base58) and minted NFT public key. Use `umi/scripts/check-collection.mjs <mint>` to verify that the minted asset is attached to the expected collection authority.
 
 ---
 
-## 10. Conseils & Sécurité
+## 9. Troubleshooting Checklist
 
-- Ne jamais committer `.env`, wallets, ou tokens sensibles.
-- Utiliser des RPC privés (QuickNode, Triton, Helius) en production ; renseigner `RPC_URL`.
-- Sur Mainnet, ajuster `PRIORITY_MICROLAMPORTS` pour garantir les confirmations (ex : `1000` = 0.000001 SOL par CU).
-- Faire un test complet sur Devnet avant la production.
-- Conserver des sauvegardes de `cache.json` et `guard.config.json` pour audit.
-
----
-
-## 11. Annexes
-
-- **Scripts utiles**
-  - `npm run generate` : alias `npm run build`.
-  - `npm run rarity` : analyse des rarités.
-  - `node scripts/generate-configs.mjs` : exécution directe si besoin.
-- **Dossier `docs/`**
-  - `umi-guard-playbook.md` : détails sur le mint Umi, la garde, et le dépannage.
-  - `full-project-guide.md` : document actuel.
+| Symptom | Likely Cause | Fix |
+| --- | --- | --- |
+| `Cannot find module` inside `umi/` | `npm install` missing in the `umi/` folder | Run `cd umi && npm install` |
+| `IncorrectCollectionAuthority (0x177a)` | `COLLECTION_UPDATE_AUTHORITY` not the Candy Machine PDA | Rerun `scripts/gen-env.sh` or read `.program.candyMachineCreator` from cache |
+| `AccountNotRentExempt` during Sugar deploy | Wallet under-funded | `solana airdrop 2` on Devnet or top-up on Mainnet |
+| `Mint exceeded the limit` | `MAX_EDITION_SUPPLY` or guard restrictions triggered | Review `guard.config.json` and reset guard values |
+| On-chain `solPayment` goes to wrong address | `SOL_PAYMENT_DESTINATION` mismatch | Regenerate configs and reset the Candy Guard |
 
 ---
 
-Avec ce guide, un nouveau membre peut installer l’environnement, générer la collection, configurer la Candy Machine/Guard, exécuter les scripts, déployer et gérer les opérations de mint. Gardez le `.env` synchronisé et régénérez toujours les fichiers config via `npm run generate-configs` dès qu’une variable change.
+## 10. Security & Production Notes
+
+- `.env`, keypairs, and JWTs must stay out of Git. Add additional ignores in `.gitignore` if you create custom env files.
+- Rotate Pinata JWTs and Solana keypairs after public demos.
+- For Mainnet, upgrade RPC endpoints to a dedicated provider (GenesysGo, Helius, etc.) for reliability.
+- Audit guard combinations before launch—this MVP currently enables only `solPayment`, but other guards (mintLimit, allowList) can be added through the same `.env` pattern.
+
+---
+
+## 11. Preparing the Hackathon Demo
+
+1. **Clean slate** – `git pull`, `npm ci`, `cd umi && npm ci`, `npm test`.
+2. **Storytelling** – Emphasize the documentation-first approach enabling teammates to reproduce the flow without tribal knowledge.
+3. **Live mint** – Demonstrate a mint on Devnet and open the resulting signature in the Solana Explorer.
+4. **Next steps** – Mention roadmap items: extend guard support, integrate analytics dashboards, wrap Umi script in a minimal UI.
+
+---
+
+## 12. Credits
+
+- **Lead & Presenter** – Kamel Ben Rhouma (treizeb)
+- **Mentoring & QA** – Oinconomics contributors
+- **Base Engine** – HashLips Art Engine (MIT License)
+
+---
+
+Appendix: the previous French guide is preserved as [`docs/full-project-guide.fr.md`](full-project-guide.fr.md) for legacy reference.

@@ -18,36 +18,36 @@ const check = (label, fn) => {
   }
 };
 
-check('Racine node_modules présent', () => {
+check('Root node_modules present', () => {
   const nodeModulesPath = path.join(repoRoot, 'node_modules');
   if (!fs.existsSync(nodeModulesPath)) {
-    throw new Error('node_modules absent. Exécutez "npm install" à la racine.');
+    throw new Error('node_modules is missing. Run "npm install" at the repository root.');
   }
 });
 
-check('Dépendances racine résolues (@metaplex-foundation/umi)', () => {
+check('Root dependency resolution (@metaplex-foundation/umi)', () => {
   require.resolve('@metaplex-foundation/umi', { paths: [repoRoot] });
 });
 
-check('Canvas disponible', () => {
+check('Canvas available', () => {
   const canvas = require('canvas');
   if (typeof canvas.createCanvas !== 'function') {
-    throw new Error('la fonction createCanvas est introuvable.');
+    throw new Error('createCanvas export not found.');
   }
 });
 
-check('Dépendances Umi installées', () => {
+check('Umi dependencies installed', () => {
   const umiNodeModules = path.join(umiRoot, 'node_modules');
   if (!fs.existsSync(umiNodeModules)) {
-    throw new Error('umi/node_modules absent. Exécutez "npm install" dans le dossier umi/.');
+    throw new Error('umi/node_modules is missing. Run "npm install" inside the umi/ directory.');
   }
   require.resolve('@metaplex-foundation/umi', { paths: [umiRoot] });
   require.resolve('dotenv', { paths: [umiRoot] });
 });
 
 if (failureCount > 0) {
-  console.error(`\n${failureCount} vérification(s) ont échoué. Voir les messages ci-dessus.`);
+  console.error(`\n${failureCount} check(s) failed. Review the details above.`);
   process.exit(1);
 }
 
-console.log('\nTout est prêt pour exécuter la génération et les scripts Umi.');
+console.log('\nEnvironment ready: generation pipeline and Umi scripts can run.');

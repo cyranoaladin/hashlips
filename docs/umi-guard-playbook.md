@@ -1,5 +1,7 @@
 # Candy Machine & Umi Guard Playbook
 
+_Companion playbook for the Oinconomics MVP presented by **Kamel Ben Rhouma (treizeb)** at the Cypherpunk Hackathon (Colosseum / Solana)._
+
 This document explains how to reproduce the entire Oinconomics Candy Machine workflow for a brand-new collection. It covers asset generation, Candy Machine deployment, guard configuration, scripted mints, and maintenance. Share this guide with any teammate who will operate the pipeline.
 
 ---
