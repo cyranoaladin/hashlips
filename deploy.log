@@ -1,0 +1,14 @@
+
+[1/3] 📦 Creating collection NFT for candy machine
+[2025-10-23T23:59:44.040651203Z DEBUG reqwest::connect] starting new connection: https://api.devnet.solana.com/
+[2025-10-23T23:59:44.678515745Z DEBUG reqwest::connect] starting new connection: https://api.devnet.solana.com/
+[2025-10-23T23:59:45.288936441Z DEBUG reqwest::connect] starting new connection: https://api.devnet.solana.com/
+[2025-10-23T23:59:45.417243036Z DEBUG reqwest::connect] starting new connection: https://api.devnet.solana.com/
+[2025-10-23T23:59:45.543887003Z DEBUG reqwest::connect] starting new connection: https://api.devnet.solana.com/
+Collection mint ID: 4BPpgcm3TkAmPSYjKrjoPXsQacuPHWr6H9GBpHkqg5Dx
+
+[2/3] 🍬 Creating candy machine
+[2025-10-23T23:59:46.588022688Z DEBUG reqwest::connect] starting new connection: https://api.devnet.solana.com/
+[2025-10-23T23:59:47.211608896Z DEBUG reqwest::connect] starting new connection: https://api.devnet.solana.com/
+
+🛑 Error running command (re-run needed): DataTypeMismatch

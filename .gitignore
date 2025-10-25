@@ -93,6 +93,7 @@ typings/
 
 .env
 .env.test
+.env.backup.*
 
 # parcel-bundler cache (https://parceljs.org/)
 
@@ -140,3 +141,13 @@ dist
 # OSX
 
 .DS_Store
+
+config.local.json
+
+# debug artifacts
+*.log
+cache.backup*.json
+mint.guard.log
+deploy-dev.log
+umi/*.backup.mjs
+umi/*.b64

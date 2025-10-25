@@ -1,0 +1,58 @@
+{
+  "name": "Nom de votre NFT #8",
+  "symbol": "OINCO",
+  "description": "Description de votre collection",
+  "seller_fee_basis_points": 1000,
+  "image": "8.png",
+  "external_url": "https://www.votre-site.com",
+  "edition": 8,
+  "attributes": [
+    {
+      "trait_type": "1.Background",
+      "value": "Purple"
+    },
+    {
+      "trait_type": "2.Skin",
+      "value": "Dark skin"
+    },
+    {
+      "trait_type": "3.Outfit",
+      "value": "Gray Hoodie"
+    },
+    {
+      "trait_type": "4.Eyes",
+      "value": "Round Sunglasses"
+    },
+    {
+      "trait_type": "5.Nose",
+      "value": "Golden Nose Ring1"
+    },
+    {
+      "trait_type": "6.Ears",
+      "value": "Black Earing"
+    },
+    {
+      "trait_type": "7.Mouth",
+      "value": "Long Moustache"
+    },
+    {
+      "trait_type": "8.Headtop",
+      "value": "Blonde"
+    }
+  ],
+  "properties": {
+    "files": [
+      {
+        "uri": "8.png",
+        "type": "image/png"
+      }
+    ],
+    "category": "image",
+    "creators": [
+      {
+        "address": "5zHBXzhaqKXJRMd7KkuWsb4s8zPyakKdijr9E3jgyG8Z",
+        "share": 100
+      }
+    ]
+  }
+}

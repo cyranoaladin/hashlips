@@ -1,0 +1,98 @@
+{
+  "program": {
+    "candyMachine": "fk47b9KTe3ob8VXtguwr4moDCvV5kBPphKdwWdVLDm1",
+    "candyGuard": "GKYT2BP1xtuESiFguDMzDvw8GhdahBYxyKGnbPs948Xj",
+    "candyMachineCreator": "E6G7gnMDuCQg1nwocpVxVJoGWxv3HLnCu41sTAATtzRs",
+    "collectionMint": "6n6DtyjUg7usj2Y9xuxc87T5WwhWRawat73QQiPu7TjJ"
+  },
+  "items": {
+    "-1": {
+      "name": "Oinconomics Collection",
+      "image_hash": "0bc01713dad4bfc8d910f035e272fc9c863b9aa4215a7297082691a971cdffe8",
+      "image_link": "https://gateway.pinata.cloud/ipfs/QmVJZLPgFiefzivSQF459QtkdvfvPyx5dW12TaxBuPePiD/collection.png",
+      "metadata_hash": "1d06e27197c6464eaf82b09b3eed384fb4e431369785f21fa91e93f76218cca1",
+      "metadata_link": "https://gateway.pinata.cloud/ipfs/QmURcErt3uRivCgDMN8UU8ny4se3JjD6k13hZgrQjgkKnB/collection.json",
+      "onChain": true
+    },
+    "0": {
+      "name": "Nom de votre NFT #0",
+      "image_hash": "0bc01713dad4bfc8d910f035e272fc9c863b9aa4215a7297082691a971cdffe8",
+      "image_link": "https://gateway.pinata.cloud/ipfs/QmVXdf5P8c3GzAvuLPPRj5A8TyZqyzww7jpQy4PXfzqDgs/0.png",
+      "metadata_hash": "a0352541dc876db53061f2078643e00ae2225ca9df661cc472df2a65a55dfa96",
+      "metadata_link": "https://gateway.pinata.cloud/ipfs/QmR2X4ESwARA7wx2KozRPRACynf33iGpw8nkUVJ7RQsTbz/0.json",
+      "onChain": true
+    },
+    "1": {
+      "name": "Nom de votre NFT #1",
+      "image_hash": "3e52232d8c0bd541970eef4fca12b7d9e4c847205dbb273b7116b523deadb691",
+      "image_link": "https://gateway.pinata.cloud/ipfs/QmRFqoc1JHUiF69ejmJ2UiQtCWVbNsp7fsr1cj4DhXVAot/1.png",
+      "metadata_hash": "37f585622b39b85e740880f5524b2c9f528fb92a01001bfab8ffef2488df450f",
+      "metadata_link": "https://gateway.pinata.cloud/ipfs/QmRHwRjV8JAtP6QMWkQQVf1jn4FjwaKouGMffd6q3BM9Mo/1.json",
+      "onChain": true
+    },
+    "2": {
+      "name": "Nom de votre NFT #2",
+      "image_hash": "a5cd399e2eed996597eff419d280a9d2210ee4c37337bcead5e788155c3c2212",
+      "image_link": "https://gateway.pinata.cloud/ipfs/QmfFYNJTvHahZb4Vas79G138dRs5V6sT1SzH1Q4zsuS161/2.png",
+      "metadata_hash": "060d97224f85cec2bd3461b0abc1e9071611663f76f4fc1cf08b7637e75ef6e8",
+      "metadata_link": "https://gateway.pinata.cloud/ipfs/QmXfjF6wJ22wxxCSw7YJ4c7PLurzDTKFjJ4y2FpLxUSyDk/2.json",
+      "onChain": true
+    },
+    "3": {
+      "name": "Nom de votre NFT #3",
+      "image_hash": "f8befce5bc0d31b275c9e42fd68d3beefc1fc5587da4ba7f134d242232f96ec0",
+      "image_link": "https://gateway.pinata.cloud/ipfs/QmR1JsYhB68R6DS4Hf6iuDgMinmdoAgPLZ5m7gSj93fYhx/3.png",
+      "metadata_hash": "48413968c4f99d4a3aa7e438aa875e97a4317bd81f2a84463f4dabe6be444dce",
+      "metadata_link": "https://gateway.pinata.cloud/ipfs/QmS4nHvbS9MhACke2x3YJkfVzrLAmBZwFAL51wVa76oezK/3.json",
+      "onChain": true
+    },
+    "4": {
+      "name": "Nom de votre NFT #4",
+      "image_hash": "282a1650a956b3dbfdff7befa3a5925308ff18c6a9653f084c3d3a56edce7ae1",
+      "image_link": "https://gateway.pinata.cloud/ipfs/QmW9Ge16gRsfu1vEXvXmZAGsJPJ591RWz8FiSuYRRNs7HG/4.png",
+      "metadata_hash": "cff2918961b8fdcde954972f4db259a584a4cc4acb8887fa718f00d03af9e20f",
+      "metadata_link": "https://gateway.pinata.cloud/ipfs/QmcwcVB8JAQ2F9tCGH5U7VwV23esWQqKtQbGS2YT8q8eq5/4.json",
+      "onChain": true
+    },
+    "5": {
+      "name": "Nom de votre NFT #5",
+      "image_hash": "247d4e58656dac17582999e7baaf58c94a8b44f5c79efba71dc4234006fb8d52",
+      "image_link": "https://gateway.pinata.cloud/ipfs/QmRKPUnU9UhMgmJwpFewZJ9Wtyxx3oEQRyx4PZ5seJKQp3/5.png",
+      "metadata_hash": "1e64a58aedd8a85795819be29978cffc2ed64cdec530209923c3c0ffc3823c0f",
+      "metadata_link": "https://gateway.pinata.cloud/ipfs/QmS9wCQk1PTdWFHjhsdHLYAeRmt2S5tottqSzb5esq912S/5.json",
+      "onChain": true
+    },
+    "6": {
+      "name": "Nom de votre NFT #6",
+      "image_hash": "c6bd228b8211b75a8ff2b9e3e9b1d6a2bb2b133b203e7afe45e09213de714b7c",
+      "image_link": "https://gateway.pinata.cloud/ipfs/QmWQEbuykTDRBsakyuhbquq58uS8JE7QvD6ST86XMoyHNo/6.png",
+      "metadata_hash": "f2548ce8f600056ebbe8d8808bc74378123fbe73df4ee37308a2c57eade1336d",
+      "metadata_link": "https://gateway.pinata.cloud/ipfs/QmXiA56PzL5Km2zuWfJxA7qmjUtzS9L3dfykttLxnCxvf4/6.json",
+      "onChain": true
+    },
+    "7": {
+      "name": "Nom de votre NFT #7",
+      "image_hash": "f9724ef5dba47e1025661ca627d70f073058859a68372e5f22fcbf191f799925",
+      "image_link": "https://gateway.pinata.cloud/ipfs/QmW8gTAryiqi2ZXwPMm13GnsE9G2RdcSNT5mTiLbanL1Bx/7.png",
+      "metadata_hash": "7965451a05bb7d20fb51220fcbba8af1dc2abd9c3bfcf14850cde8e3e04497b5",
+      "metadata_link": "https://gateway.pinata.cloud/ipfs/QmYJs8HtESnh7Axqjc128AKzchkEJwwD4p9VhuRoA58ukZ/7.json",
+      "onChain": true
+    },
+    "8": {
+      "name": "Nom de votre NFT #8",
+      "image_hash": "f36cde8fa1f20d0fd2563e06920bc6be1e91659ebeae6254d76e4719cd783008",
+      "image_link": "https://gateway.pinata.cloud/ipfs/QmakL2sdrKU1DsvksHj8YcvUjwH6Hqma2rSNhkXGHrUWsw/8.png",
+      "metadata_hash": "4e8d7f9f93fcf0e729fcce6b5cee7fbc181121b87434994daa3ee064a8db772f",
+      "metadata_link": "https://gateway.pinata.cloud/ipfs/QmbGtswV6kggHBSCCEoHYWsWs2ezYrPsbK4GivRe2J2zqT/8.json",
+      "onChain": true
+    },
+    "9": {
+      "name": "Nom de votre NFT #9",
+      "image_hash": "b5f26d96e1af217cb32f39bd37bb5160db6cd6d34edf3b7d05190f018e964839",
+      "image_link": "https://gateway.pinata.cloud/ipfs/QmPriKhvYBYwUt8tcDwm3f9rtwCJCgYN5EvL6saLmntAE4/9.png",
+      "metadata_hash": "1bc17e1294f420748de81e38b2a96db29e12822d7cc526e4daaf97ffb00b61c7",
+      "metadata_link": "https://gateway.pinata.cloud/ipfs/QmNjx1MwoomYbeJVz8hxE3i3TJFk248rDPky2kaifV1Mm1/9.json",
+      "onChain": true
+    }
+  }
+}

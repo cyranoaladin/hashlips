@@ -1,0 +1,29 @@
+{
+  "tokenStandard": "nft",
+  "number": 10,
+  "symbol": "OINCO",
+  "sellerFeeBasisPoints": 1000,
+  "isMutable": true,
+  "isSequential": false,
+  "creators": [
+    {
+      "address": "5zHBXzhaqKXJRMd7KkuWsb4s8zPyakKdijr9E3jgyG8Z",
+      "share": 100
+    }
+  ],
+  "uploadMethod": "pinata",
+  "ruleSet": null,
+  "awsConfig": null,
+  "sdriveApiKey": null,
+  "nftStorageAuthToken": null,
+  "shdwStorageAccount": null,
+  "pinataConfig": {
+    "jwt": "REDACTED_FOR_GITHUB",
+    "apiGateway": "https://api.pinata.cloud",
+    "contentGateway": "https://gateway.pinata.cloud",
+    "parallelLimit": 100
+  },
+  "hiddenSettings": null,
+  "guards": null,
+  "maxEditionSupply": null
+}

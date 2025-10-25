@@ -1,4 +1,62 @@
-# Welcome to HashLips 👄
+# Oinconomics Candy Machine MVP
+
+> Generative art + Candy Machine v3 guard automation. Built for the **Cypherpunk Hackathon by Colosseum (Solana)** and presented by **Kamel Ben Rhouma (aka treizeb)**.
+
+## About This Submission
+- **Project scope** – End-to-end NFT launch workflow: asset generation (HashLips), Candy Machine v3 + Candy Guard configuration, Umi-powered guarded minting, and detailed operator documentation.
+- **Team** – Lead developer & presenter: **Kamel Ben Rhouma / treizeb**. Mentored by the Oinconomics contributors.
+- **Status** – Minimal Viable Product (MVP) ready for live demos on Solana Devnet; mainnet-ready after updating the environment variables.
+
+## Highlights for the Jury
+- Environment-driven configuration (`.env.example`) with exhaustive inline guidance to remove trial-and-error.
+- Automated config generation (`npm run generate-configs`) guarantees `config.json`, `guard.config.json`, and `config.local.json` stay in sync.
+- Guarded mint script (`umi/mint-guard.mjs`) dynamically loads compute budgets, collection authority, and guard destinations from cache/config.
+- Operator playbooks in English covering Sugar CLI, Umi scripting, troubleshooting, and security practices.
+- Smoke-test command (`npm test`) validates both dependency trees before any demo.
+
+## Repository Tour
+- `layers/` – Art layers used by the HashLips Art Engine for trait composition.
+- `scripts/` – Automation (`generate-configs.mjs`, `gen-env.sh`, `smoke-test.js`).
+- `umi/` – Isolated Node workspace for Umi scripts and Candy Machine integration.
+- `docs/` – Hackathon-ready documentation: full onboarding guide + guard playbook.
+- `build/` – Generated assets/metadata (cleaned and rebuilt via `npm run build`).
+
+## Quick Start
+```bash
+git clone https://github.com/cyranoaladin/hashlips.git
+cd hashlips
+npm install
+cd umi && npm install && cd ..
+cp .env.example .env   # or scripts/gen-env.sh .env to auto-fill from cache.json
+npm run generate-configs
+```
+
+> Skiping `cd umi && npm install` will break the guarded mint scripts. Re-run the install inside `umi/` whenever dependencies change.
+
+## Validation Checklist
+- `npm test` – Smoke check that both dependency trees resolve (`canvas`, Umi, dotenv).
+- `npm run build` – Generates 10 sample items to prove the HashLips pipeline works end-to-end.
+- Optional: `node umi/mint-guard.mjs` – Performs a Devnet mint using the guard settings defined in `.env`.
+
+## Documentation for Reviewers
+- **Operations Manual** – [`docs/full-project-guide.md`](docs/full-project-guide.md): full onboarding, environment setup, Candy Machine deployment, maintenance.
+- **Candy Guard & Umi Playbook** – [`docs/umi-guard-playbook.md`](docs/umi-guard-playbook.md): advanced guard usage, mint orchestration, runbooks.
+- **Environment Template** – [`.env.example`](./.env.example): exhaustive comments for every required secret or parameter.
+- Legacy French version of the full guide is still available as [`docs/full-project-guide.fr.md`](docs/full-project-guide.fr.md).
+
+## Demo Talking Points
+1. Start from the clean repo → run `scripts/gen-env.sh .env` to ingest an existing Sugar cache and pre-fill variables.
+2. `npm run generate-configs` to align on-chain guard expectations with local configuration.
+3. Showcase `npm run build` (art generation) followed by `node umi/mint-guard.mjs` to mint on Devnet.
+4. Use the playbook docs to highlight guard safety (solPayment destination, compute unit tuning, collection authority checks).
+
+## Maintainers & Contact
+- **Kamel Ben Rhouma (treizeb)** – Lead developer & hackathon presenter.
+- For mentorship/background: reach out via the Oinconomics Discord workspace.
+
+---
+
+## Appendix: Original HashLips Reference
 
 ![](https://github.com/HashLips/hashlips_art_engine/blob/main/logo.png)
 
