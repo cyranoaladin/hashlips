@@ -1,0 +1,59 @@
+{
+  "name": "Oinkonomics #2787",
+  "symbol": "OINK",
+  "description": "Oinkonomics is a collection of 3000 unique NFTs on Solana, divided into three tiers: Poor (0-999), Mid (1000-1999), and Rich (2000-2999). Your wallet balance determines your tier!",
+  "seller_fee_basis_points": 500,
+  "image": "2787.png",
+  "external_url": "https://oinkonomics.fun",
+  "attributes": [
+    {
+      "trait_type": "Background",
+      "value": "Rich 6"
+    },
+    {
+      "trait_type": "Skin",
+      "value": "2.Pale Orange"
+    },
+    {
+      "trait_type": "Outfit",
+      "value": "Coat"
+    },
+    {
+      "trait_type": "Eyes",
+      "value": "Top Gun"
+    },
+    {
+      "trait_type": "Nose",
+      "value": "Golden Nose Ring2"
+    },
+    {
+      "trait_type": "Ears",
+      "value": "Bling Bling"
+    },
+    {
+      "trait_type": "Mouth",
+      "value": "Blonde Moustache"
+    },
+    {
+      "trait_type": "Headtop",
+      "value": "Young Blood"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Poor"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Oinklords"
+    }
+  ],
+  "properties": {
+    "files": [
+      {
+        "uri": "2787.png",
+        "type": "image/png"
+      }
+    ],
+    "category": "image"
+  }
+}

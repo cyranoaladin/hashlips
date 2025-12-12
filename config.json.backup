@@ -1,0 +1,55 @@
+{
+  "number": 3000,
+  "symbol": "OINK",
+  "sellerFeeBasisPoints": 2206,
+  "isMutable": true,
+  "isSequential": true,
+  "creators": [
+    {
+      "address": "2cCwkHm8cMP6ni7fuQDrHRX8TG75M3yT24QuH4LPPKmd",
+      "share": 100
+    }
+  ],
+  "uploadMethod": "bundlr",
+  "awsConfig": null,
+  "nftStorageAuthToken": null,
+  "shdwStorageAccount": null,
+  "rpcUrl": "https://api.devnet.solana.com",
+  "hiddenSettings": null,
+  "tokenStandard": "pnft",
+  "guards": {
+    "default": {
+      "botTax": null,
+      "solPayment": {
+        "value": 0.022,
+        "destination": "2cCwkHm8cMP6ni7fuQDrHRX8TG75M3yT24QuH4LPPKmd"
+      },
+      "tokenPayment": null,
+      "startDate": null,
+      "thirdPartySigner": null,
+      "tokenGate": null,
+      "gatekeeper": null,
+      "endDate": null,
+      "allowList": null,
+      "mintLimit": null,
+      "nftPayment": null,
+      "redeemedAmount": null,
+      "addressGate": null,
+      "nftGate": null,
+      "nftBurn": null,
+      "tokenBurn": null,
+      "freezeSolPayment": {
+        "value": 0.022,
+        "destination": "2cCwkHm8cMP6ni7fuQDrHRX8TG75M3yT24QuH4LPPKmd"
+      },
+      "freezeTokenPayment": null,
+      "programGate": null,
+      "allocation": null,
+      "token2022Payment": null,
+      "solFixedFee": null,
+      "nftMintLimit": null,
+      "edition": null
+    }
+  },
+  "ruleSet": null
+}

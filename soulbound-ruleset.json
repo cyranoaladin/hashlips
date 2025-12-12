@@ -1,0 +1,12 @@
+{
+  "libVersion": 1,
+  "ruleSetName": "Oinkonomics Soulbound",
+  "owner": [
+    {
+      "pubkey": "2cCwkHm8cMP6ni7fuQDrHRX8TG75M3yT24QuH4LPPKmd"
+    }
+  ],
+  "operations": {
+    "Transfer": "Deny"
+  }
+}

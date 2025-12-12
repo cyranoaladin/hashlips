@@ -1,0 +1,94 @@
+╔════════════════════════════════════════════════════╗
+║     🛡️  SYSTÈME ANTI-CRASH ACTIVÉ  🛡️            ║
+╚════════════════════════════════════════════════════╝
+
+┌─ GÉNÉRATION ──────────────────────────────────────┐
+│                                                    │
+│  Générer tous les NFTs (30,000):                  │
+│  $ ./generate-safe.sh                             │
+│                                                    │
+│  Générer par tier:                                │
+│  $ ./generate-safe.sh POOR   # 0-9999             │
+│  $ ./generate-safe.sh MID    # 10000-19999        │
+│  $ ./generate-safe.sh RICH   # 20000-29999        │
+│                                                    │
+│  Mode test (10 NFTs):                             │
+│  $ TEST_TIER_SIZE=10 ./generate-safe.sh           │
+│                                                    │
+└────────────────────────────────────────────────────┘
+
+┌─ MONITORING ──────────────────────────────────────┐
+│                                                    │
+│  Voir la progression:                             │
+│  $ ./monitor-generation.sh                        │
+│                                                    │
+│  Surveillance continue:                           │
+│  $ ./monitor-generation.sh --watch                │
+│                                                    │
+└────────────────────────────────────────────────────┘
+
+┌─ UTILITAIRES ─────────────────────────────────────┐
+│                                                    │
+│  Nettoyer et recommencer:                         │
+│  $ ./clean-and-restart.sh                         │
+│                                                    │
+│  Vérifier la RAM:                                 │
+│  $ free -h                                        │
+│                                                    │
+│  Vérifier l'espace disque:                        │
+│  $ df -h                                          │
+│                                                    │
+└────────────────────────────────────────────────────┘
+
+┌─ CONFIGURATION ───────────────────────────────────┐
+│                                                    │
+│  Fichier: performance.config.js                   │
+│                                                    │
+│  BATCH_SIZE: 50        # NFTs par lot             │
+│  BATCH_DELAY: 2000     # Pause en ms              │
+│                                                    │
+│  Ajustez selon votre RAM:                         │
+│  - < 8GB RAM  : BATCH_SIZE=25, DELAY=3000        │
+│  - 8-16GB RAM : BATCH_SIZE=50, DELAY=2000        │
+│  - > 16GB RAM : BATCH_SIZE=100, DELAY=1500       │
+│                                                    │
+└────────────────────────────────────────────────────┘
+
+┌─ FONCTIONNALITÉS ─────────────────────────────────┐
+│                                                    │
+│  ✅ Génération par lots (évite surcharge)         │
+│  ✅ Nettoyage mémoire automatique                 │
+│  ✅ Sauvegarde progressive (tous les 100)         │
+│  ✅ Monitoring RAM en temps réel                  │
+│  ✅ Statistiques de progression                   │
+│                                                    │
+└────────────────────────────────────────────────────┘
+
+┌─ RÉSOLUTION DE PROBLÈMES ─────────────────────────┐
+│                                                    │
+│  Si ça crash encore:                              │
+│                                                    │
+│  1. Réduire BATCH_SIZE à 25 ou 10                 │
+│  2. Augmenter BATCH_DELAY à 3000 ou 5000          │
+│  3. Fermer Chrome, Discord, etc.                  │
+│  4. Générer tier par tier au lieu de tout         │
+│  5. Vérifier RAM avec: free -h                    │
+│                                                    │
+└────────────────────────────────────────────────────┘
+
+┌─ DOCUMENTATION ───────────────────────────────────┐
+│                                                    │
+│  📖 QUICK_GENERATE.md - Guide rapide              │
+│  📖 PERFORMANCE_LIMITS.md - Guide détaillé        │
+│  📖 ANTI_CRASH_INSTALLED.md - Résumé complet      │
+│                                                    │
+└────────────────────────────────────────────────────┘
+
+╔════════════════════════════════════════════════════╗
+║  🚀 PRÊT À GÉNÉRER VOS 30,000 NFTs ! 🚀          ║
+╚════════════════════════════════════════════════════╝
+
+Commande la plus simple:
+$ ./generate-safe.sh
+
+Bonne génération ! 🎨

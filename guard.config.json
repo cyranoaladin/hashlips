@@ -1,0 +1,10 @@
+{
+  "guards": {
+    "default": {
+      "solPayment": {
+        "lamports": 22000000,
+        "destination": "2cCwkHm8cMP6ni7fuQDrHRX8TG75M3yT24QuH4LPPKmd"
+      }
+    }
+  }
+}
